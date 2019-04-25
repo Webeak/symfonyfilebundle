@@ -1,0 +1,83 @@
+# Core concepts
+
+- [How things are stored](#how-things-are-stored)
+- [Basic usage](#basic-usage)
+- [Adapters](#adapters)
+- [Todo](#todo)
+
+
+The main idea is that a file (from the application point of view) is only a string identifier.
+
+The string identifier can be use to access all the data about a file (including its path) using a `FileManager`.
+
+All data concerning a file are stored in an internal storage managed by the bundle.
+
+The bundle is designed to support multiple types of storage but only `Doctrine` has been implemented for now (see the [Todo](#todo) section for more on this).
+
+With doctrine, files's metadata are stored in the database, in a table managed by the bundle.
+
+You are responsible of storing the file identifier so you can query it later, but the Doctrine part of the bundle handle
+most of it automatically (see the [Doctrine](doctrine.md) section for more info).
+
+## How things are stored
+
+The files are stored in the filesystem, no matter the storage you choose. 
+They can be stored at two different locations depending on their visibility:
+
+- **private** files are stored in `var/storage/wb-files`. They can't be accessed directly in http, they are served by a **proxy** route (more on this later).
+- **public** files are stored in `public/storage`. These files are in the `public` directory so you can access them directly.
+
+The bundle is responsible of choosing in which directory put the files. It will only store files in the `public` directory when explicitly marked as **public**.
+
+### Customize paths
+
+You can change the paths where are stored the files like this:
+
+```yaml
+wb_file:
+    # private files storage dir
+    save_path: "%kernel.project_dir%/var/storage/wb-files"
+    
+    # public files storage dir
+    public_save_path: "%kernel.project_dir%/public/storage"
+```
+
+Absolute paths are expected.
+
+### Storing the metadata
+
+Storing a file is good, but we need to store metadata describing what is this file (name, type, size, access rights, etc.).
+
+These metadata are stored in whatever storage you define in the configuration. By default the `doctrine` storage is used, which means
+metadata are stored in the database.
+
+You can choose which storage you want in the configuration:
+
+```yaml
+wb_file:
+    storage_type: doctrine
+```
+
+Only `doctrine` is supported for now (see [Todo](#todo)).
+
+## Basic usage
+
+To store a file, simply inject the `FileManager` and call the `register` method:
+
+```php
+
+```
+
+## Todo
+
+For a future version it would be great to decouple `Doctrine` from the bundle.
+To do this, maybe create a `file-doctrine-bundle` that has a dependency on `file-bundle` and that 
+implements the doctrine storage, the types, entity listeners, etc.
+
+The original `file-bundle` would only keep a filesystem storage where files' metadata would be stored on the 
+filesystem with minimal dependencies.
+
+Nothing else should have to change.
+
+I don't do it now because the filesystem storage is not coded yet and would take time that I don't have right now.
+
