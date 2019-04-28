@@ -1,5 +1,27 @@
 services:
+    #
+    # Defines controllers as services and set autowire and autoconfigure because they are at false by default.
+    #
+    Webeak\Bundle\FileBundle\Controller\:
+        autowire: true
+        autoconfigure: true
+        resource: '../../Controller'
+        tags: ['controller.service_arguments']
+
+    #
+    # Declare commands.
+    #
+    Webeak\Bundle\FileBundle\Command\:
+        autowire: true
+        autoconfigure: true
+        resource: '../../Command'
+        tags: ['console.command']
+
+    #
+    # Main services
+    #
     Webeak\Bundle\FileBundle\FileManager:
+        public: true
         arguments:
             - '@service_container'
             - '@validator'
@@ -7,7 +29,7 @@ services:
             - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '%wb_file.storage_type%'
-            - '%wb_file.temp_file_lifetime%'
+            - '%wb_file.temp_files_lifetime%'
         tags:
             - { name: 'kernel.event_listener', event: 'kernel.terminate', method: onKernelTerminate }
 
@@ -82,13 +104,23 @@ services:
     #
     # Storage
     #
+    Webeak\Bundle\FileBundle\Storage\FileSystemStorage:
+        arguments:
+            - '@service_container'
+            - '@Webeak\Bundle\CacheBundle\Cache'
+            - '@kernel'
+            - '@wb.error_tracker'
+            - '@Webeak\Bundle\FileBundle\FileSystem'
+        tags:
+            - { name: wb_file.file_manager_storage, alias: filesystem }
+
     Webeak\Bundle\FileBundle\Storage\DoctrineStorage:
         arguments:
-          - '@service_container'
-          - '@doctrine'
-          - '@wb.error_tracker'
-          - '@Webeak\Bundle\FileBundle\FileSystem'
-          - '%wb_file.doctrine_storage%'
+            - '@service_container'
+            - '@doctrine'
+            - '@wb.error_tracker'
+            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '%wb_file.doctrine_storage%'
         tags:
             - { name: wb_file.file_manager_storage, alias: doctrine }
 
@@ -98,17 +130,17 @@ services:
     Webeak\Bundle\FileBundle\Serializer\PublicFileNormalizer:
         public: false
         arguments:
-          - '@Webeak\Bundle\FileBundle\FileManager'
-          - '@wb.error_tracker'
-          - '%kernel.environment%'
+            - '@Webeak\Bundle\FileBundle\FileManager'
+            - '@wb.error_tracker'
+            - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
     Webeak\Bundle\FileBundle\Serializer\PublicFileCollectionNormalizer:
         public: false
         arguments:
-          - '@Webeak\Bundle\FileBundle\FileManager'
-          - '@wb.error_tracker'
-          - '%kernel.environment%'
+            - '@Webeak\Bundle\FileBundle\FileManager'
+            - '@wb.error_tracker'
+            - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
     #

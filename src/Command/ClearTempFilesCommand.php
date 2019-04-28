@@ -10,7 +10,7 @@ class ClearTempFilesCommand extends ContainerAwareCommand
 {
     protected function configure()
     {
-        $this->setName('wb:files:clear')
+        $this->setName('wb:file:clear')
             ->setDescription('Clears temporary files');
     }
 

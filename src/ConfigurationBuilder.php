@@ -9,6 +9,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\Validator\Constraint;
+use Webeak\Component\Utils\ArrayUtils;
 
 /**
  * Offer an handy interface to create a configuration object.
@@ -134,27 +135,27 @@ class ConfigurationBuilder
     /**
      * Add new users to the cumulative white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersWhiteListCumulative($usersRefs)
+    public function addUsersWhiteListCumulative($username)
     {
-        $this->configuration->addUsersWhiteListCumulative($usersRefs);
+        $this->configuration->addUsersWhiteListCumulative($username);
         return $this;
     }
 
     /**
-     * Get or set users of the cumulative white list.
+     * Get or set users ids of the cumulative white list.
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this|array
      */
-    public function usersWhiteListCumulative($usersRefs)
+    public function usersWhiteListCumulative($username)
     {
-        if ($usersRefs !== null) {
-            $this->configuration->setUsersWhiteListCumulative($usersRefs);
+        if ($username !== null) {
+            $this->configuration->setUsersWhiteListCumulative($username);
             return $this;
         }
         return $this->configuration->getUsersWhiteListCumulative();
@@ -163,27 +164,27 @@ class ConfigurationBuilder
     /**
      * Add new users to the exclusive white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersWhiteListExclusive($usersRefs)
+    public function addUsersWhiteListExclusive($username)
     {
-        $this->configuration->addUsersWhiteListExclusive($usersRefs);
+        $this->configuration->addUsersWhiteListExclusive($username);
         return $this;
     }
 
     /**
      * Get/set users of the exclusive white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return array|$this
      */
-    public function usersWhiteListExclusive($usersRefs)
+    public function usersWhiteListExclusive($username)
     {
-        if ($usersRefs !== null) {
-            $this->configuration->setUsersWhiteListExclusive($usersRefs);
+        if ($username !== null) {
+            $this->configuration->setUsersWhiteListExclusive($username);
             return $this;
         }
         return $this->configuration->getUsersWhiteListExclusive();
@@ -192,27 +193,27 @@ class ConfigurationBuilder
     /**
      * Add new users to the black list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersBlackList($usersRefs)
+    public function addUsersBlackList($username)
     {
-        $this->configuration->addUsersBlackList($usersRefs);
+        $this->configuration->addUsersBlackList($username);
         return $this;
     }
 
     /**
      * Get/set users of the black list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return array|$this
      */
-    public function usersBlackList($usersRefs = null)
+    public function usersBlackList($username = null)
     {
-        if ($usersRefs !== null) {
-            $this->configuration->setUsersBlackList($usersRefs);
+        if ($username !== null) {
+            $this->configuration->setUsersBlackList($username);
             return $this;
         }
         return $this->configuration->getUsersBlackList();
@@ -221,7 +222,7 @@ class ConfigurationBuilder
     /**
      * Add roles to the existing set of required roles
      *
-     * @param string|array $requiredRoles
+     * @param string|string[] $requiredRoles
      *
      * @return $this
      */
@@ -300,7 +301,7 @@ class ConfigurationBuilder
     public function extra(array $extra = null)
     {
         if ($extra !== null) {
-            $this->configuration->setExtra($extra);
+            $this->configuration->addExtra($extra);
             return $this;
         }
         return $this->configuration->getExtra();
@@ -317,7 +318,7 @@ class ConfigurationBuilder
     public function publicExtra(array $extra = null)
     {
         if ($extra !== null) {
-            $this->configuration->setPublicExtra($extra);
+            $this->configuration->addPublicExtra($extra);
             return $this;
         }
         return $this->configuration->getPublicExtra();
@@ -337,15 +338,14 @@ class ConfigurationBuilder
      * Load a preset into the configuration.
      *
      * @param string|array $preset preset's name or configuration
-     * @param boolean      $reset  (optional) if true, a new configuration object will be created,
+     * @param boolean      $reset  (optional, default: false) if true, a new configuration object will be created,
      *                             otherwise the preset specifications will be added to the existing one.
-     *                             Default: true
      *
      * @return $this
      *
      * @throws
      */
-    public function loadPreset($preset, $reset = true)
+    public function loadPreset($preset, $reset = false)
     {
         if (is_string($preset)) {
             if (!array_key_exists($preset, $this->presets)) {
@@ -354,9 +354,9 @@ class ConfigurationBuilder
             $preset = $this->presets[$preset];
         }
         if (!is_array($preset)) {
-            $this->errorTracker->trackAndThrow(new \InvalidArgumentException('Unsupported preset configuration.', ['input' => $preset]));
+            $this->errorTracker->trackAndThrow(new \InvalidArgumentException('A preset definition must be an array.', ['input' => $preset]));
         }
-        if ($reset !== true) {
+        if ($reset) {
             $this->configuration = new Configuration();
         }
         if (array_key_exists('constraints', $preset)) {
@@ -374,24 +374,13 @@ class ConfigurationBuilder
                 $this->endProcessorsSequence();
             }
         }
-        if (array_key_exists('whiteListExclusive', $preset)) {
-            $this->addUsersWhiteListExclusive($preset['whiteListExclusive']);
-        }
-        if (array_key_exists('whiteListCumulative', $preset)) {
-            $this->addUsersWhiteListCumulative($preset['whiteListCumulative']);
-        }
-        if (array_key_exists('blackList', $preset)) {
-            $this->addUsersBlackList($preset['blackList']);
-        }
-        if (array_key_exists('public', $preset)) {
-            $this->public($preset['public']);
-        }
-        if (array_key_exists('extra', $preset)) {
-            $this->extra($preset['extra']);
-        }
-        if (array_key_exists('publicExtra', $preset)) {
-            $this->publicExtra($preset['publicExtra']);
-        }
+        $this->addRequiredRoles(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'requiredRoles')));
+        $this->addUsersWhiteListExclusive(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'whiteListExclusive')));
+        $this->addUsersWhiteListCumulative(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'whiteListCumulative')));
+        $this->addUsersBlackList(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'blackList')));
+        $this->public(ArrayUtils::getValue($preset, 'public', $this->public()));
+        $this->extra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'extra')));
+        $this->publicExtra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'publicExtra')));
         return $this;
     }
 

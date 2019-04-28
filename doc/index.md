@@ -37,8 +37,8 @@ Never executing these commands is not recommended if your project uses the bundl
  
 | Command                | Description                                                                            |
 |------------------------|----------------------------------------------------------------------------------------|
-| wb:files:clear-expired | Deletes the files (and their metadata) for which the expiration date has been reached. |
-| wb:files:clear         | Remove temporary files that have never been confirmed after upload.                    |
+| wb:file:clear-expired | Deletes the files (and their metadata) for which the expiration date has been reached. |
+| wb:file:clear         | Remove temporary files that have never been confirmed after upload.                    |
 
 
 ### Cron tasks
@@ -47,12 +47,12 @@ The ideal is to create cron task to execute the commands automatically. Below a 
 
 <u>**Clears temporary files**</u>:
 ```
-*/1 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:files:clear
+*/1 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:file:clear
 ```
 
 <u>**Clears expired files files**</u>:
 ```
-*/10 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:files:clear-expired
+*/10 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:file:clear-expired
 ```
 
 ## Server configuration

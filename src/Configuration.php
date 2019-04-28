@@ -4,6 +4,7 @@ namespace Webeak\Bundle\FileBundle;
 use Webeak\Bundle\FileBundle\Processor\ProcessorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Validator\Constraint;
+use Webeak\Component\Utils\ArrayUtils;
 
 /**
  * Configuration object used by the file manager.
@@ -158,36 +159,36 @@ class Configuration
     /**
      * Add new users to the cumulative white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersWhiteListCumulative($usersRefs)
+    public function addUsersWhiteListCumulative($username)
     {
-        $this->usersWhiteListCumulative = array_unique(array_merge($this->usersWhiteListCumulative, (array)$usersRefs));
+        $this->usersWhiteListCumulative = array_unique(array_merge($this->usersWhiteListCumulative, (array)$username));
         return $this;
     }
 
     /**
      * Set users of the cumulative white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function setUsersWhiteListCumulative($usersRefs)
+    public function setUsersWhiteListCumulative($username)
     {
         $this->usersWhiteListCumulative = [];
-        $this->addUsersWhiteListCumulative($usersRefs);
+        $this->addUsersWhiteListCumulative($username);
         return $this;
     }
 
     /**
      * Get users of the cumulative white list
      *
-     * @return array
+     * @return string[]
      */
-    public function getUsersWhiteListCumulative()
+    public function getUsersWhiteListCumulative(): array
     {
         return $this->usersWhiteListCumulative;
     }
@@ -195,27 +196,27 @@ class Configuration
     /**
      * Add new users to the exclusive white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersWhiteListExclusive($usersRefs)
+    public function addUsersWhiteListExclusive($username)
     {
-        $this->usersWhiteListExclusive = array_unique(array_merge($this->usersWhiteListExclusive, (array)$usersRefs));
+        $this->usersWhiteListExclusive = array_unique(array_merge($this->usersWhiteListExclusive, (array)$username));
         return $this;
     }
 
     /**
      * Set users of the exclusive white list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function setUsersWhiteListExclusive($usersRefs)
+    public function setUsersWhiteListExclusive($username)
     {
         $this->usersWhiteListExclusive = [];
-        $this->addUsersWhiteListExclusive($usersRefs);
+        $this->addUsersWhiteListExclusive($username);
         return $this;
     }
 
@@ -232,36 +233,36 @@ class Configuration
     /**
      * Add new users to the black list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function addUsersBlackList($usersRefs)
+    public function addUsersBlackList($username)
     {
-        $this->usersBlackList = array_unique(array_merge($this->usersBlackList, (array)$usersRefs));
+        $this->usersBlackList = array_unique(array_merge($this->usersBlackList, (array)$username));
         return $this;
     }
 
     /**
      * Set users of the black list
      *
-     * @param string|array $usersRefs
+     * @param string|string[] $username
      *
      * @return $this
      */
-    public function setUsersBlackList($usersRefs)
+    public function setUsersBlackList($username)
     {
         $this->usersBlackList = [];
-        $this->addUsersBlackList($usersRefs);
+        $this->addUsersBlackList($username);
         return $this;
     }
 
     /**
      * Get users of the black list.
      *
-     * @return array
+     * @return string[]
      */
-    public function getUsersBlackList()
+    public function getUsersBlackList(): array
     {
         return $this->usersBlackList;
     }
@@ -361,11 +362,24 @@ class Configuration
     }
 
     /**
+     * Add extra while keeping existing ones.
+     *
+     * @param array $extra
+     *
+     * @return Configuration
+     */
+    public function addExtra(array $extra)
+    {
+        $this->extra = ArrayUtils::mergeRecursiveDistinct($this->extra, $extra);
+        return $this;
+    }
+
+    /**
      * Set extra
      *
      * @param array $extra
      *
-     * @return AbstractFile
+     * @return Configuration
      */
     public function setExtra(array $extra)
     {
@@ -384,11 +398,24 @@ class Configuration
     }
 
     /**
+     * Set public extra while keeping existing ones.
+     *
+     * @param array $extra
+     *
+     * @return Configuration
+     */
+    public function addPublicExtra(array $extra)
+    {
+        $this->publicExtra = ArrayUtils::mergeRecursiveDistinct($this->publicExtra, $extra);
+        return $this;
+    }
+
+    /**
      * Set public extra
      *
      * @param array $extra
      *
-     * @return AbstractFile
+     * @return Configuration
      */
     public function setPublicExtra(array $extra)
     {
@@ -411,7 +438,7 @@ class Configuration
      * You can restore the Configuration instance by using either:
      *
      *  - $configurationInstance->importGenericRepresentation()
-     *  - Configuration::createFromGenericRepresenation()
+     *  - Configuration::createFromGenericRepresentation()
      *
      * @return array
      */
@@ -473,6 +500,9 @@ class Configuration
         for ($i = 0, $ii = count($fields); $i < $ii; ++$i) {
             $field = $fields[$i];
             if (array_key_exists($field, $configuration)) {
+                if (is_array($this->$field)) {
+                    $configuration[$field] = ArrayUtils::ensureArray($configuration[$field]);
+                }
                 $this->$field = $configuration[$field];
             }
         }

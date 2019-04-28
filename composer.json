@@ -18,6 +18,7 @@
         "doctrine/doctrine-bundle": "^1.10",
         "gregwar/image-bundle": "^2.2",
         "symfony/framework-bundle": "^4.2",
+        "symfony/routing": "^4.1",
         "symfony/validator": "4.2.*",
         "webeak/essential-bundle": "^1.0",
         "webeak/utils": "^1.0"

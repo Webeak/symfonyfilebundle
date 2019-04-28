@@ -10,7 +10,7 @@ class ClearExpiredFilesCommand extends ContainerAwareCommand
 {
     protected function configure()
     {
-        $this->setName('wb:files:clear-expired')
+        $this->setName('wb:file:clear-expired')
             ->setDescription('Clears expired files');
     }
 

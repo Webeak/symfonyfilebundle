@@ -20,7 +20,7 @@ interface ProcessorInterface
     public function supports(File $file, ManagedFile $parent);
 
     /**
-     * Do the processing
+     * Do the processing.
      *
      * @param File        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
@@ -30,14 +30,14 @@ interface ProcessorInterface
     public function process(File $file, ManagedFile $parent);
 
     /**
-     * Set an array of options
+     * Set an array of options.
      *
      * @param array $options
      */
     public function setOptions(array $options);
 
     /**
-     * Get the full array of options
+     * Get the full array of options.
      *
      * @return array
      */
@@ -45,7 +45,7 @@ interface ProcessorInterface
 
     /**
      * Get the id of the service in the container.
-     * Processors are always services.
+     * Processors are always services and MUST be public.
      *
      * @return string
      */

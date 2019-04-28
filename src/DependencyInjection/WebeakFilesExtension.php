@@ -43,8 +43,9 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('wb_file.constraints_aliases', $aliases);
         $container->setParameter('wb_file.configuration_presets', $presets);
         $container->setParameter('wb_file.storage_type', $config['storage_type']);
-        $container->setParameter('wb_file.temp_file_lifetime', $config['temp_file_lifetime']);
-        $container->setParameter('wb_file.not_found_image_path', realpath($config['not_found_image_path']));
+        $container->setParameter('wb_file.temp_files_lifetime', $config['temp_files_lifetime']);
+        $container->setParameter('wb_file.not_found_image_path', $config['not_found_image_path']);
+        $container->setParameter('wb_file.access_denied_image_path', $config['access_denied_image_path']);
         $container->setParameter('wb_file.doctrine_storage', [
             'entity_class' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_class']),
             'entity_id_attr' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_id_attr'])

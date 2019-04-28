@@ -4,6 +4,7 @@ namespace Webeak\Bundle\FileBundle\Storage;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Symfony\Component\Console\Output\OutputInterface;
+use Webeak\Bundle\FileBundle\PublicFile;
 
 /**
  * Base interface all storages must implement.
@@ -24,20 +25,19 @@ interface StorageInterface
      *
      * @return ManagedFile
      *
-     * @throws FileNotFoundException
+     * @throws
      */
-    public function load($identifier);
+    public function load(string $identifier);
 
     /**
      * Load a file from the storage using its unique hash.
+     * \! WARNING !/ Files with an expiration date will be ignored.
      *
      * @param string $hash
      *
-     * @return ManagedFile
-     *
-     * @throws FileNotFoundException
+     * @return ManagedFile|null
      */
-    public function loadByHash($hash);
+    public function loadByHash(string $hash);
 
     /**
      * Persist a file in the storage to be saved.
@@ -53,18 +53,18 @@ interface StorageInterface
     /**
      * Process all scheduled operations.
      *
-     * @param ManagedFile[] $files (optional, default: null) array of files to flush, if not defined the whole pool will be flushed
-     *
      * @return mixed
      *
      * @throws
      */
-    public function flush($files = null);
+    public function flush();
 
     /**
      * Remove a file.
      *
      * @param ManagedFile|PublicFile|string $file file instance or identifier
+     *
+     * @throws
      */
     public function remove($file);
 
@@ -72,7 +72,9 @@ interface StorageInterface
      * Remove a version of a file.
      *
      * @param ManagedFile|PublicFile|string $file
-     * @param string|array       $version
+     * @param string|array                  $version
+     *
+     * @throws
      */
     public function removeVersion($file, $version);
 
@@ -80,6 +82,8 @@ interface StorageInterface
      * Remove the expiration date of a file.
      *
      * @param ManagedFile|PublicFile|string $file
+     *
+     * @throws
      */
     public function removeExpirationDate($file);
 }

@@ -52,6 +52,21 @@ class PublicFile
         $this->extra = [];
     }
 
+    /**
+     * Alias of 'exportGenericRepresentation'.
+     *
+     * @return array
+     */
+    public function asArray(): array
+    {
+        return $this->exportGenericRepresentation();
+    }
+
+    /**
+     * Returns the array representation of the object.
+     *
+     * @return array
+     */
     public function exportGenericRepresentation()
     {
         $versions = [];
@@ -67,6 +82,11 @@ class PublicFile
         ];
     }
 
+    /**
+     * Import an array representation of a PublicFile into the current instance.
+     *
+     * @param array $data
+     */
     public function importGenericRepresentation(array $data)
     {
         $versions = [];
@@ -82,6 +102,13 @@ class PublicFile
         $this->extra = array_key_exists('extra', $data) ? ((array)$data['extra']) : [];
     }
 
+    /**
+     * Create a PublicFile instance and import the input data into it.
+     *
+     * @param array $data
+     *
+     * @return PublicFile
+     */
     public static function createFromGenericRepresentation(array $data)
     {
         $instance = new self;

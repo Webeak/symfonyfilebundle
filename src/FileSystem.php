@@ -154,6 +154,30 @@ class FileSystem
     }
 
     /**
+     * Remove a file or a directory and N parent directories if empty.
+     *
+     * @param File|string $file
+     * @param integer     $limit (optional, default: -1) how many upper level to remove at max? < 0 means no limit.
+     *
+     * @return boolean
+     */
+    public function removeWithParentIfEmpty($file, $limit = 0)
+    {
+        $path = ($file instanceof File) ? $file->getRealPath() : $file;
+        if (is_dir($path)) {
+            // rmdir will fail if the directory is not empty, so let PHP do the job of checking that. Just silence the warning.
+            $success = @rmdir($path);
+        } else {
+            $success = @unlink($path);
+        }
+        if ($success && $limit !== 0) {
+            $dir = dirname($path);
+            $this->removeWithParentIfEmpty($dir, $limit > 0 ? ($limit - 1) : -1);
+        }
+        return $success;
+    }
+
+    /**
      * Persist a file to the main storage.
      *
      * If the file is already if the main storage, nothing happen.

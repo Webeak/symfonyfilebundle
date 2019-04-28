@@ -2,6 +2,7 @@
 namespace Webeak\Bundle\FileBundle\Controller;
 
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Controller\JsonController;
@@ -9,10 +10,23 @@ use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
 use Webeak\Bundle\FileBundle\FileManager;
 
 class FileManagerController extends JsonController
 {
+    /** @var FileManager */
+    private $fileManager;
+
+    /** @var ErrorTrackerInterface */
+    private $errorTracker;
+
+    public function __construct(FileManager $fileManager, ErrorTrackerInterface $errorTracker)
+    {
+        $this->fileManager = $fileManager;
+        $this->errorTracker = $errorTracker;
+    }
+
     /**
      * @Route(name="wb_file_upload", path="/file/upload", methods={"POST"})
      *
@@ -27,10 +41,9 @@ class FileManagerController extends JsonController
         $output = [];
         $files = $request->files->all();
         if (is_array($files) && count($files) > 0) {
-            $manager = $this->get(FileManager::class);
             $preset = $request->get('preset');
-            $resultFiles = $manager->registerTemporarily(array_values($files), $preset);
-            $manager->flush();
+            $resultFiles = $this->fileManager->registerTemporarily(array_values($files), $preset);
+            $this->fileManager->flush();
             for ($i = 0, $ii = count($resultFiles); $i < $ii; ++$i) {
                 $publicFile = $resultFiles[0]->getPublicFile();
                 $output[] = array_merge($publicFile ? $publicFile->exportGenericRepresentation() : [], [
@@ -51,40 +64,69 @@ class FileManagerController extends JsonController
      * @param string $type
      *
      * @return Response
+     *
+     * @throws
      */
-    public function proxy($identifier, $version = 'default', $type = null)
+    public function proxy($identifier, $version = 'default', $type = null, KernelInterface $kernel)
     {
-        $manager = $this->get(FileManager::class);
         try {
-            $file = $manager->get($identifier);
-            if ($file->hasVersion($version)) {
-                $versionFile = $file->getVersion($version);
-                return new BinaryFileResponse($versionFile);
-            } else if ($file->hasDefaultVersion() && $file->getVersion('default')->isImage()) {
-                $type = 'image';
+            $file = $this->fileManager->get($identifier);
+            if (!$file->hasVersion($version)) {
+                throw new FileNotFoundException('Not found.');
             }
+            $versionFile = $file->getVersion($version);
+            return new BinaryFileResponse($versionFile);
         } catch (FileNotFoundException $e) {
-            // Nothing to do here.
+            return $this->handleFetchErrorResponse(
+                $type,
+                'wb_file.not_found_image_path',
+                '@FileBundle/Resources/assets/404.png',
+                $this->createNotFoundException(),
+                $kernel
+            );
+        } catch (FileProtectedException $e) {
+            return $this->handleFetchErrorResponse(
+                $type,
+                'wb_file.access_denied_image_path',
+                '@FileBundle/Resources/assets/403.png',
+                $this->createAccessDeniedException(),
+                $kernel
+            );
         } catch (\Exception $e) {
             // Should not happen, something went wrong.
-            $tracker = $this->get(ErrorTrackerInterface::class);
-            $tracker->track($e, ['identifier' => $identifier, 'version' => $version]);
+            $this->errorTracker->track($e, ['identifier' => $identifier, 'version' => $version]);
         }
-        // Generic case: 404
+    }
+
+    /**
+     * Creates a binary response in case the type is an image or throw the fallback exception.
+     *
+     * @param string          $type
+     * @param string          $parameterName
+     * @param string          $fallbackImage
+     * @param \Exception      $fallbackExcption
+     * @param KernelInterface $kernel
+     *
+     * @return BinaryFileResponse
+     *
+     * @throws
+     */
+    private function handleFetchErrorResponse(string $type,
+                                              string $parameterName,
+                                              string $fallbackImage,
+                                              \Exception $fallbackExcption,
+                                              KernelInterface $kernel)
+    {
         if ($type === 'i' || $type === 'image') {
             $path = null;
             try {
-                $kernel = $this->get('kernel');
-                $path = $this->getParameter('wb_file.not_found_image_path');
+                $path = $this->getParameter($parameterName);
             } catch (\Exception $e) { }
-            if (!$path) {
-                $path = $kernel->locateResource('@WebeakFileBundle/Resources/assets/404.jpg');
+            if (!$path || !file_exists($path)) {
+                $path = $kernel->locateResource($fallbackImage);
             }
             return new BinaryFileResponse($path);
         }
-        $translator = $this->get('translator');
-        throw $this->createNotFoundException($translator->trans('exception.file-manager.file-not-found', [
-            '%identifier%' => $identifier
-        ], 'exceptions'));
+        throw $fallbackExcption;
     }
 }

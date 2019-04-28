@@ -65,8 +65,69 @@ Only `doctrine` is supported for now (see [Todo](#todo)).
 To store a file, simply inject the `FileManager` and call the `register` method:
 
 ```php
+<?php
+namespace App\Controller;
 
+use Webeak\Bundle\FileBundle\FileManager;
+
+class ExampleController
+{
+    public function localImage(FileManager $fileManager)
+    {
+        $path = '/path/to/a/file.jpg';
+        $managedFiles = $fileManager->register($path);
+        $filePublicUrl = $managedFiles[0]->getPublicPath();
+        
+        // Do your stuff with it.
+    }
+}
 ```
+
+You can of course give an `UploadedFile` instance to it to register a file uploaded by the current http request:
+
+```php
+<?php
+namespace App\Controller;
+
+use Symfony\Component\HttpFoundation\Request;
+use Webeak\Bundle\FileBundle\FileManager;
+
+class ExampleController
+{
+    public function localImage(Request $request, FileManager $fileManager)
+    {
+        $files = $request->files->all();
+        
+        // A ManagedFile instance will be returned for each uploaded file.
+        $managedFiles = $fileManager->register($files);
+        
+        // Do your stuff with them.
+    }
+}
+```
+
+Of course with the above example you have no validation or processing of the files.
+But they are stored in a secured way so they can't be accessed directly from the outside world and you only
+have to save their identifiers to access them later.
+
+You can access the identifier of a `ManagedFile` instance by doing:
+
+```php
+$managedFile->getIdentifier();
+```
+You can also store more information about the file so you don't have to call the 
+`FileManager` each time you need the name of the file for example:
+
+```php
+// Returns a PublicFile instance containing non-sensitive information about
+// the file (name, size, all versions with their public url, etc.).
+$publicFile = $managedFile->getPublicFile();
+```
+
+You can then `serialize` this object into a database, or send it through an api to save it remotely.. you have a string so you're good to go.
+
+You can also call `asArray()` on the `PublicFile` instance to get an associative array instead.
+
 
 ## Todo
 
