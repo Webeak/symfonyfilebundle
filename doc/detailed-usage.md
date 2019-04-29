@@ -3,6 +3,7 @@
 The main facade object your dealing with most of the time is the `FileManager`. 
 It is used to register, validate, fetch and remove files.
 
+- [Register a file](#register-a-file)
 
 ## Register a file
 

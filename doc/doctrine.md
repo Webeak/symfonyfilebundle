@@ -1,8 +1,19 @@
-# Doctrine storage
+# Doctrine
 
+- [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [File entity](#file-entity)
 - [Auto sync](#auto-sync)
+
+## Introduction
+
+Doctrine is an optional dependency. By default the bundle does not require it.
+
+If Doctrine is installed, several things happen:
+
+- Custom entity types are added (`file` and `files`)
+- A listener is listening to all your operations on the entity manager to handle changes that occurs on your `file` and `files` entity attributes.
+- The `doctrine` storage is available. When enabled, metadata are stored in your database.
 
 ## Custom types
 

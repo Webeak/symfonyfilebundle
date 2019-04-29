@@ -5,6 +5,11 @@
 - [Server configuration](#server-configuration)
 - [Core concepts](core-concepts.md)
 - [Detailed usage](detailed-usage.md)
+- [Adapters](adapters.md)
+- [Constraints](constraints.md)
+- [Processors](processors.md)
+- [Presets](presets.md)
+- [Access rights](access-rights.md)
 - [Doctrine](doctrine.md)
 
 ## Installation

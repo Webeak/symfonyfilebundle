@@ -5,6 +5,7 @@ use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
+use Webeak\Bundle\EssentialBundle\RandomTaskFactory;
 use Webeak\Bundle\EssentialBundle\UniqueIdGenerator;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Adapter\AdapterInterface;
@@ -28,40 +29,44 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class FileManager
 {
     /** @var ContainerInterface */
-    protected $container;
+    private $container;
 
     /** @var ValidatorInterface */
-    protected $validator;
+    private $validator;
 
     /** @var ErrorTrackerInterface */
-    protected $errorTracker;
+    private $errorTracker;
 
     /** @var UniqueIdGenerator */
-    protected $uniqueIdGenerator;
+    private $uniqueIdGenerator;
 
     /** @var AdapterInterface */
-    protected $adapters;
+    private $adapters;
 
     /** @var ProcessorInterface */
-    protected $processors;
+    private $processors;
 
     /** @var StorageInterface */
-    protected $storages;
+    private $storages;
 
     /** @var FileSystem */
-    protected $filesystem;
+    private $filesystem;
+
+    /** @var RandomTaskFactory */
+    private $randomTaskFactory;
 
     /** @var string */
-    protected $storageType;
+    private $storageType;
 
     /** @var integer */
-    protected $tempFilesLifetime;
+    private $tempFilesLifetime;
 
     public function __construct(ContainerInterface $container,
                                 ValidatorInterface $validator,
                                 ErrorTrackerInterface $errorTracker,
                                 UniqueIdGenerator $uniqueIdGenerator,
                                 FileSystem $filesystem,
+                                RandomTaskFactory $randomTaskFactory,
                                 $storageType,
                                 $tempFilesLifetime)
     {
@@ -72,6 +77,7 @@ class FileManager
         $this->filesystem = $filesystem;
         $this->storageType = $storageType;
         $this->tempFilesLifetime = $tempFilesLifetime;
+        $this->randomTaskFactory = $randomTaskFactory;
         $this->adapters = [];
         $this->processors = [];
         $this->storages = [];
@@ -352,6 +358,7 @@ class FileManager
     public function onKernelTerminate(): void
     {
         $this->flush();
+        $this->maybeRunCleanupCommands();
     }
 
     /**
@@ -695,5 +702,15 @@ class FileManager
         if (!$user || !$managedFile->hasAccess($user)) {
             throw new FileProtectedException('Access denied.');
         }
+    }
+
+    /**
+     * Will maybe clear expired files and/or temporary files.
+     */
+    private function maybeRunCleanupCommands(): void
+    {
+        $storage = $this->getStorage();
+        $this->randomTaskFactory->create('wb:file:clear', [$this->filesystem, 'clearOldTemporaryFiles'], 5, 0)->runMaybe();
+        $this->randomTaskFactory->create('wb:file:clear-expired', [$storage, 'clearExpiredFiles'], 5, 0)->runMaybe();
     }
 }

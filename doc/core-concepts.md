@@ -2,9 +2,7 @@
 
 - [How things are stored](#how-things-are-stored)
 - [Basic usage](#basic-usage)
-- [Adapters](#adapters)
-- [Todo](#todo)
-
+- [Advanced concepts](#advanced-concepts)
 
 The main idea is that a file (from the application point of view) is only a string identifier.
 
@@ -129,16 +127,13 @@ You can then `serialize` this object into a database, or send it through an api 
 You can also call `asArray()` on the `PublicFile` instance to get an associative array instead.
 
 
-## Todo
+## Advanced concepts
 
-For a future version it would be great to decouple `Doctrine` from the bundle.
-To do this, maybe create a `file-doctrine-bundle` that has a dependency on `file-bundle` and that 
-implements the doctrine storage, the types, entity listeners, etc.
+More complex topics have their dedicated section:
 
-The original `file-bundle` would only keep a filesystem storage where files' metadata would be stored on the 
-filesystem with minimal dependencies.
-
-Nothing else should have to change.
-
-I don't do it now because the filesystem storage is not coded yet and would take time that I don't have right now.
-
+- [Adapters](adapters.md)
+- [Constraints](constraints.md)
+- [Processors](processors.md)
+- [Presets](presets.md)
+- [Access rights](access-rights.md)
+- [Doctrine](doctrine.md)

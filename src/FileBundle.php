@@ -37,17 +37,19 @@ class FileBundle extends Bundle
      */
     public function boot()
     {
-        $em = $this->container->get('doctrine.orm.entity_manager');
-        $platform = $em->getConnection()->getDatabasePlatform();
-        if (!Type::hasType('file')) {
-            Type::addType('file', 'Webeak\Bundle\FileBundle\Bridge\Doctrine\Dbal\Type\FileType');
-            $platform->registerDoctrineTypeMapping('file', 'file');
-            $platform->markDoctrineTypeCommented('file');
-        }
-        if (!Type::hasType('files')) {
-            Type::addType('files', 'Webeak\Bundle\FileBundle\Bridge\Doctrine\Dbal\Type\FilesType');
-            $platform->registerDoctrineTypeMapping('files', 'files');
-            $platform->markDoctrineTypeCommented('files');
+        if ($this->container->has('doctrine.orm.entity_manager')) {
+            $em = $this->container->get('doctrine.orm.entity_manager');
+            $platform = $em->getConnection()->getDatabasePlatform();
+            if (!Type::hasType('file')) {
+                Type::addType('file', 'Webeak\Bundle\FileBundle\Bridge\Doctrine\Dbal\Type\FileType');
+                $platform->registerDoctrineTypeMapping('file', 'file');
+                $platform->markDoctrineTypeCommented('file');
+            }
+            if (!Type::hasType('files')) {
+                Type::addType('files', 'Webeak\Bundle\FileBundle\Bridge\Doctrine\Dbal\Type\FilesType');
+                $platform->registerDoctrineTypeMapping('files', 'files');
+                $platform->markDoctrineTypeCommented('files');
+            }
         }
     }
 }

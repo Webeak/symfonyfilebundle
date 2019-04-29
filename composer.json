@@ -15,7 +15,6 @@
         "php": "^7.1.3",
         "ext-curl": "*",
         "ext-json": "*",
-        "doctrine/doctrine-bundle": "^1.10",
         "gregwar/image-bundle": "^2.2",
         "symfony/framework-bundle": "^4.2",
         "symfony/routing": "^4.1",
@@ -24,7 +23,8 @@
         "webeak/utils": "^1.0"
     },
     "suggest": {
-        "symfony/translation": "^4.2"
+        "doctrine/doctrine-bundle": "To use doctrine storage and/or profit of doctrine types.",
+        "webeak/shared-storage-bundle": "To set expiration date to files when using the filesystem storage."
     },
     "autoload": {
         "psr-4": { "Webeak\\Bundle\\FileBundle\\": "src/" },

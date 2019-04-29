@@ -1,11 +1,10 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Storage;
 
-use Doctrine\ORM\EntityManager;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Webeak\Bundle\CacheBundle\CacheInterface;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
+use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
@@ -17,7 +16,10 @@ use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Webeak\Bundle\SharedStorageBundle\LockInterface;
+use Webeak\Bundle\SharedStorageBundle\SharedStorageInterface;
 use Webeak\Component\Utils\ArrayUtils;
+use Webeak\Component\Utils\DebugLogger;
 
 /**
  * Store files metadata in the filesystem.
@@ -26,13 +28,13 @@ class FileSystemStorage implements StorageInterface
 {
     private const METADATA_DIR = 'm';
     private const HASHES_DIR = 'h';
-    private const EXPIRATION_DATES_CACHE_KEY = 'wb_file.expiring_files';
+    private const EXPIRATION_DATES_STORAGE_KEY = 'file-bundle:expiring_files';
 
     /** @var ContainerInterface */
     private $container;
 
-    /** @var CacheInterface */
-    private $cache;
+    /** @var SharedStorageInterface */
+    private $sharedStorage;
     
     /** @var ErrorTrackerInterface */
     private $errorTracker;
@@ -58,17 +60,18 @@ class FileSystemStorage implements StorageInterface
     /** @var array */
     private $expiringFiles;
 
+    /** @var LockInterface */
+    private $expiringFilesLock;
+
     /** @var string */
     private $metadataRootDir;
 
     public function __construct(ContainerInterface $container,
-                                CacheInterface $cache, 
                                 KernelInterface $kernel,
                                 ErrorTrackerInterface $errorTracker,
                                 FileSystem $filesystem)
     {
         $this->container = $container;
-        $this->cache = $cache;
         $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
         $this->knownEntities = [];
@@ -77,7 +80,21 @@ class FileSystemStorage implements StorageInterface
         $this->waitingForRemove = [];
         $this->waitingForFlush = [];
         $this->expiringFiles = null;
+        $this->expiringFilesLock = null;
+        $this->sharedStorage = null;
         $this->metadataRootDir = $kernel->getProjectDir() . '/var/storage/wb-files/metadata';
+        DebugLogger::enable(DebugLogger::TYPE_TEXT, DebugLogger::OUTPUT_FILE, '/var/www/vhosts/webeak-symfony-bundles/httpdocs/tmp-log.txt');
+    }
+
+    /**
+     * Shared storage is optional.
+     * The container will set it through this method if available.
+     *
+     * @param SharedStorageInterface $sharedStorage
+     */
+    public function setSharedStorage(SharedStorageInterface $sharedStorage)
+    {
+        $this->sharedStorage = $sharedStorage;
     }
 
     /**
@@ -92,7 +109,6 @@ class FileSystemStorage implements StorageInterface
         if (strlen($identifier) >= 4) {
             $path = $this->getMetadataPathForIdentifier($identifier);
             if (file_exists($path)) {
-                $this->loadTimeLimitedFiles();
                 $managedFile = $this->createManagedFileFromMetadataPath($path);
                 if ($managedFile instanceof ManagedFile) {
                     $this->knownManagedFiles['id'][$identifier] = $managedFile;
@@ -142,11 +158,6 @@ class FileSystemStorage implements StorageInterface
         if (strlen($identifier) < 4) {
             $this->errorTracker->trackAndThrow(new InvalidArgumentException('Invalid file identifier. Identifiers must be at least 4 characters long.'));
         }
-        $versions = $file->getVersions();
-        foreach ($versions as $name => $version) {
-            $version = $this->filesystem->persist($version);
-            $file->setVersion($name, $version);
-        }
         $this->waitingForFlush[$identifier] = [
             'path' => $this->getMetadataPathForIdentifier($identifier),
             'data' => $this->serializeManagedFile($file),
@@ -184,7 +195,6 @@ class FileSystemStorage implements StorageInterface
             } else {
                 $this->waitingForFlush[$identifier] = [
                     'path' => $this->getMetadataPathForIdentifier($identifier),
-                    'data' => $this->serializeManagedFile($file),
                     'file' => $file
                 ];
             }
@@ -237,7 +247,15 @@ class FileSystemStorage implements StorageInterface
                 /** @var ManagedFile $file */
                 $file = $data['file'];
                 $identifier = $file->getIdentifier();
+                $oldHash = $file->getHash();
                 $this->removeOldHashMetadata($file);
+
+                // Write versions
+                $versions = $file->getVersions();
+                foreach ($versions as $name => $version) {
+                    $version = $this->filesystem->persist($version);
+                    $file->setVersion($name, $version);
+                }
 
                 // Remove versions
                 $removedVersions = $file->getRemovedVersions();
@@ -247,7 +265,7 @@ class FileSystemStorage implements StorageInterface
 
                 // Write metadata
                 $this->filesystem->ensurePathExists(dirname($data['path']));
-                if (@file_put_contents($data['path'], $data['data']) === false) {
+                if (@file_put_contents($data['path'], $this->serializeManagedFile($file)) === false) {
                     $writesFailed[] = $data['path'];
                 }
 
@@ -269,6 +287,11 @@ class FileSystemStorage implements StorageInterface
                     unset($this->expiringFiles[$identifier]);
                     $expiringFilesChanged = true;
                 }
+                if (array_key_exists($oldHash, $this->knownManagedFiles['hash'])) {
+                    unset($this->knownManagedFiles['hash'][$oldHash]);
+                }
+                $this->knownManagedFiles['id'][$identifier] = $file;
+                $this->knownManagedFiles['hash'][$file->getHash()] = $file;
             }
             if (count($writesFailed) > 0) {
                 $this->errorTracker->track(new IOException('Failed to write metadata files.'), ['paths' => $writesFailed]);
@@ -295,7 +318,13 @@ class FileSystemStorage implements StorageInterface
         }
         if ($expiringFilesChanged) {
             $this->saveTimeLimitedFiles();
+        } else if ($this->expiringFilesLock) {
+            $this->expiringFilesLock->release();
+            $this->expiringFilesLock = null;
+            $this->expiringFiles = null;
         }
+        DebugLogger::log('End of flush: ' . json_encode($this->expiringFiles));
+        DebugLogger::flush();
     }
 
     /**
@@ -490,8 +519,17 @@ class FileSystemStorage implements StorageInterface
         if ($this->expiringFiles !== null) {
             return $this->expiringFiles;
         }
+        if (!$this->sharedStorage) {
+            $this->expiringFiles = [];
+            return $this->expiringFiles;
+        }
         try {
-            $this->expiringFiles = ArrayUtils::ensureArray($this->cache->get(self::EXPIRATION_DATES_CACHE_KEY));
+            $this->expiringFiles = ArrayUtils::ensureArray($this->sharedStorage->getAndLockUntilNextSet(
+                self::EXPIRATION_DATES_STORAGE_KEY,
+                'wb',
+                5000,
+                $this->expiringFilesLock
+            ));
         } catch (\Exception | \Throwable $e) {
             $this->expiringFiles = [];
         }
@@ -505,9 +543,18 @@ class FileSystemStorage implements StorageInterface
      */
     public function saveTimeLimitedFiles(): void
     {
+        if (!$this->sharedStorage && count($this->expiringFiles) > 0) {
+            $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
+                'You must install "webeak/shared-storage-bundle" in order to set an expiration date to a file.'
+            ));
+        }
         try {
-            $this->cache->set(self::EXPIRATION_DATES_CACHE_KEY, $this->expiringFiles);
-            $this->cache->commit();
+            $this->sharedStorage->set(self::EXPIRATION_DATES_STORAGE_KEY, $this->expiringFiles, 'wb');
+            if ($this->expiringFilesLock) {
+                $this->expiringFilesLock->release();
+                $this->expiringFilesLock = null;
+            }
+            $this->expiringFiles = null;
         } catch (\Exception | \Throwable $e) {
             $this->errorTracker->track($e);
         }

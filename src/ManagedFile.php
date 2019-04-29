@@ -747,7 +747,6 @@ class ManagedFile
     public function getHash()
     {
         $exported = $this->configuration->exportGenericRepresentation();
-        unset($exported['expirationDate']);
         return md5($this->getSourceFilesHash().'#'.json_encode($exported));
     }
 

@@ -28,6 +28,7 @@ services:
             - '@wb.error_tracker'
             - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
             - '%wb_file.storage_type%'
             - '%wb_file.temp_files_lifetime%'
         tags:
@@ -107,10 +108,11 @@ services:
     Webeak\Bundle\FileBundle\Storage\FileSystemStorage:
         arguments:
             - '@service_container'
-            - '@Webeak\Bundle\CacheBundle\Cache'
             - '@kernel'
             - '@wb.error_tracker'
             - '@Webeak\Bundle\FileBundle\FileSystem'
+        calls:
+            - [setSharedStorage, ['@?Webeak\Bundle\SharedStorageBundle\SharedStorageInterface']]
         tags:
             - { name: wb_file.file_manager_storage, alias: filesystem }
 
