@@ -34,6 +34,12 @@ You can then install the bundle:
 composer require webeak-file
 ```
 
+The if you use `Doctrine`, execute the following command to create bundle's entities:
+
+```bash
+php bin/console doctrine:schema:update --force
+```
+
 ## Commands
 
 Certain commands have to be executed regularly to keep everything clean. 

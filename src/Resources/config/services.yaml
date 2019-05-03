@@ -25,7 +25,7 @@ services:
         arguments:
             - '@service_container'
             - '@validator'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
@@ -39,14 +39,14 @@ services:
         shared: false
         arguments:
             - '@service_container'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%wb_file.configuration_presets%'
             - '%wb_file.constraints_aliases%'
             - '%wb_file.processors_aliases%'
 
     Webeak\Bundle\FileBundle\FileSystem:
         arguments:
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@filesystem'
             - '%wb_file.save_path%'
             - '%wb_file.public_save_path%'
@@ -55,7 +55,7 @@ services:
         public: true
         shared: false
         arguments:
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '@router'
             - '%wb_file.http_root%'
@@ -70,7 +70,7 @@ services:
 
     Webeak\Bundle\FileBundle\Adapter\UploadedFileAdapter:
         arguments:
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
         tags:
             - { name: wb.file.file_manager_adapter }
@@ -78,14 +78,14 @@ services:
     Webeak\Bundle\FileBundle\Adapter\HttpPathAdapter:
         arguments:
             - '@Webeak\Bundle\FileBundle\FileSystem'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\LocalPathAdapter:
         arguments:
             - '@Webeak\Bundle\FileBundle\FileSystem'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
@@ -109,7 +109,7 @@ services:
         arguments:
             - '@service_container'
             - '@kernel'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
         calls:
             - [setSharedStorage, ['@?Webeak\Bundle\SharedStorageBundle\SharedStorageInterface']]
@@ -120,7 +120,7 @@ services:
         arguments:
             - '@service_container'
             - '@doctrine'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '%wb_file.doctrine_storage%'
         tags:
@@ -133,7 +133,7 @@ services:
         public: false
         arguments:
             - '@Webeak\Bundle\FileBundle\FileManager'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
@@ -141,7 +141,7 @@ services:
         public: false
         arguments:
             - '@Webeak\Bundle\FileBundle\FileManager'
-            - '@wb.error_tracker'
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
@@ -150,7 +150,7 @@ services:
     #
     Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\EventListener\EntityListener:
         public: false
-        arguments: ['@Webeak\Bundle\FileBundle\FileManager', '@wb.error_tracker']
+        arguments: ['@Webeak\Bundle\FileBundle\FileManager', '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface']
         tags:
             - { name: wb_essentials.doctrine.listener, event: postLoad, method: postLoad, priority: 1 }
             - { name: wb_essentials.doctrine.listener, event: onFlush, method: onFlush, priority: 1000 }
