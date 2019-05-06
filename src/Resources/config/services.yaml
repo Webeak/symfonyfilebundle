@@ -154,3 +154,18 @@ services:
         tags:
             - { name: wb_essentials.doctrine.listener, event: postLoad, method: postLoad, priority: 1 }
             - { name: wb_essentials.doctrine.listener, event: onFlush, method: onFlush, priority: 1000 }
+
+    #
+    # Commands
+    #
+    Webeak\Bundle\FileBundle\Command\ClearExpiredFilesCommand:
+        arguments:
+            - '@Webeak\Bundle\FileBundle\FileManager'
+        tags:
+            - { name: 'console.command', command: 'wb:file:clear-expired' }
+
+    Webeak\Bundle\FileBundle\Command\ClearTempFilesCommand:
+        arguments:
+            - '@Webeak\Bundle\FileBundle\FileSystem'
+        tags:
+            - { name: 'console.command', command: 'wb:file:clear' }

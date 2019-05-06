@@ -1,23 +1,31 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Command;
 
-use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Webeak\Bundle\FileBundle\FileSystem;
 
-class ClearTempFilesCommand extends ContainerAwareCommand
+class ClearTempFilesCommand extends Command
 {
+    /** @var FileSystem */
+    private $fileSystem;
+
+    public function __construct(FileSystem $fileSystem, string $name = null)
+    {
+        parent::__construct($name);
+        $this->fileSystem = $fileSystem;
+    }
+
     protected function configure()
     {
         $this->setName('wb:file:clear')
-            ->setDescription('Clears temporary files');
+             ->setDescription('Clears temporary files');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $manager = $this->getContainer()->get(FileSystem::class);
-        $manager->clearOldTemporaryFiles($output);
+        $this->fileSystem->clearOldTemporaryFiles($output);
     }
 }
 

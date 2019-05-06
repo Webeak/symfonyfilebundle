@@ -19,7 +19,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Webeak\Bundle\SharedStorageBundle\LockInterface;
 use Webeak\Bundle\SharedStorageBundle\SharedStorageInterface;
 use Webeak\Component\Utils\ArrayUtils;
-use Webeak\Component\Utils\DebugLogger;
 
 /**
  * Store files metadata in the filesystem.
@@ -83,7 +82,6 @@ class FileSystemStorage implements StorageInterface
         $this->expiringFilesLock = null;
         $this->sharedStorage = null;
         $this->metadataRootDir = $kernel->getProjectDir() . '/var/storage/wb-files/metadata';
-        DebugLogger::enable(DebugLogger::TYPE_TEXT, DebugLogger::OUTPUT_FILE, '/var/www/vhosts/webeak-symfony-bundles/httpdocs/tmp-log.txt');
     }
 
     /**
@@ -323,8 +321,6 @@ class FileSystemStorage implements StorageInterface
             $this->expiringFilesLock = null;
             $this->expiringFiles = null;
         }
-        DebugLogger::log('End of flush: ' . json_encode($this->expiringFiles));
-        DebugLogger::flush();
     }
 
     /**
