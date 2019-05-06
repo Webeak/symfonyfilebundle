@@ -20,6 +20,7 @@
         "symfony/routing": "^4.1",
         "symfony/validator": "4.2.*",
         "webeak/essential-bundle": "^1.0",
+        "webeak/error-tracker-bundle": "^1.0",
         "webeak/utils": "^1.0"
     },
     "suggest": {
