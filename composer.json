@@ -28,7 +28,7 @@
         "webeak/shared-storage-bundle": "To set expiration date to files when using the filesystem storage."
     },
     "autoload": {
-        "psr-4": { "Webeak\\Bundle\\WebeakFileBundle\\": "src/" },
+        "psr-4": { "Webeak\\Bundle\\FileBundle\\WebeakFileBundle\\": "src/" },
         "exclude-from-classmap": [
             "/Tests/"
         ]
