@@ -9,7 +9,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Webeak\Bundle\FileBundle\DependencyInjection\WebeakFilesExtension;
 
-class FileBundle extends Bundle
+class WebeakFileBundle extends Bundle
 {
     /**
      * {@inheritdoc}

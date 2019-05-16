@@ -37,16 +37,16 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
 
         $aliases = $this->processConstraintsAliases($config);
         $presets = $this->processPresets($config, $aliases);
-        $container->setParameter('wb_file.save_path', $config['save_path']);
-        $container->setParameter('wb_file.public_save_path', $config['public_save_path']);
-        $container->setParameter('wb_file.http_root', $config['http_root']);
-        $container->setParameter('wb_file.constraints_aliases', $aliases);
-        $container->setParameter('wb_file.configuration_presets', $presets);
-        $container->setParameter('wb_file.storage_type', $config['storage_type']);
-        $container->setParameter('wb_file.temp_files_lifetime', $config['temp_files_lifetime']);
-        $container->setParameter('wb_file.not_found_image_path', $config['not_found_image_path']);
-        $container->setParameter('wb_file.access_denied_image_path', $config['access_denied_image_path']);
-        $container->setParameter('wb_file.doctrine_storage', [
+        $container->setParameter('wb.file.save_path', $config['save_path']);
+        $container->setParameter('wb.file.public_save_path', $config['public_save_path']);
+        $container->setParameter('wb.file.http_root', $config['http_root']);
+        $container->setParameter('wb.file.constraints_aliases', $aliases);
+        $container->setParameter('wb.file.configuration_presets', $presets);
+        $container->setParameter('wb.file.storage_type', $config['storage_type']);
+        $container->setParameter('wb.file.temp_files_lifetime', $config['temp_files_lifetime']);
+        $container->setParameter('wb.file.not_found_image_path', $config['not_found_image_path']);
+        $container->setParameter('wb.file.access_denied_image_path', $config['access_denied_image_path']);
+        $container->setParameter('wb.file.doctrine_storage', [
             'entity_class' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_class']),
             'entity_id_attr' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_id_attr'])
         ]);

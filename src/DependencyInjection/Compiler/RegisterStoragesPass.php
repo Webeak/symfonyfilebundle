@@ -16,7 +16,7 @@ class RegisterStoragesPass implements CompilerPassInterface
             return ;
         }
         $managerDefinition = $container->getDefinition('Webeak\Bundle\FileBundle\FileManager');
-        foreach ($container->findTaggedServiceIds('wb_file.file_manager_storage') as $id => $attributes) {
+        foreach ($container->findTaggedServiceIds('wb.file.file_manager_storage') as $id => $attributes) {
             $managerDefinition->addMethodCall('registerStorage', [new Reference($id), $attributes]);
         }
     }

@@ -29,8 +29,8 @@ services:
             - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
-            - '%wb_file.storage_type%'
-            - '%wb_file.temp_files_lifetime%'
+            - '%wb.file.storage_type%'
+            - '%wb.file.temp_files_lifetime%'
         tags:
             - { name: 'kernel.event_listener', event: 'kernel.terminate', method: onKernelTerminate }
 
@@ -40,16 +40,16 @@ services:
         arguments:
             - '@service_container'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '%wb_file.configuration_presets%'
-            - '%wb_file.constraints_aliases%'
-            - '%wb_file.processors_aliases%'
+            - '%wb.file.configuration_presets%'
+            - '%wb.file.constraints_aliases%'
+            - '%wb.file.processors_aliases%'
 
     Webeak\Bundle\FileBundle\FileSystem:
         arguments:
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@filesystem'
-            - '%wb_file.save_path%'
-            - '%wb_file.public_save_path%'
+            - '%wb.file.save_path%'
+            - '%wb.file.public_save_path%'
 
     Webeak\Bundle\FileBundle\ManagedFile:
         public: true
@@ -58,7 +58,7 @@ services:
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '@router'
-            - '%wb_file.http_root%'
+            - '%wb.file.http_root%'
             - '%kernel.project_dir%'
 
     #
@@ -114,7 +114,7 @@ services:
         calls:
             - [setSharedStorage, ['@?Webeak\Bundle\SharedStorageBundle\SharedStorageInterface']]
         tags:
-            - { name: wb_file.file_manager_storage, alias: filesystem }
+            - { name: wb.file.file_manager_storage, alias: filesystem }
 
     Webeak\Bundle\FileBundle\Storage\DoctrineStorage:
         arguments:
@@ -122,9 +122,9 @@ services:
             - '@doctrine'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
-            - '%wb_file.doctrine_storage%'
+            - '%wb.file.doctrine_storage%'
         tags:
-            - { name: wb_file.file_manager_storage, alias: doctrine }
+            - { name: wb.file.file_manager_storage, alias: doctrine }
 
     #
     # Normalizer

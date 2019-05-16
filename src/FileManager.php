@@ -322,7 +322,7 @@ class FileManager
     /**
      * Dependency injection callback for registering storages bound using services' tags.
      *
-     * To register here you need to add the tag "wb_file.file_manager_storage" to the service concerned.
+     * To register here you need to add the tag "wb.file.file_manager_storage" to the service concerned.
      *
      * @param mixed $service
      * @param array $attributes

@@ -79,7 +79,7 @@ class FileManagerController extends JsonController
         } catch (FileNotFoundException $e) {
             return $this->handleFetchErrorResponse(
                 $type,
-                'wb_file.not_found_image_path',
+                'wb.file.not_found_image_path',
                 '@FileBundle/Resources/assets/404.png',
                 $this->createNotFoundException(),
                 $kernel
@@ -87,7 +87,7 @@ class FileManagerController extends JsonController
         } catch (FileProtectedException $e) {
             return $this->handleFetchErrorResponse(
                 $type,
-                'wb_file.access_denied_image_path',
+                'wb.file.access_denied_image_path',
                 '@FileBundle/Resources/assets/403.png',
                 $this->createAccessDeniedException(),
                 $kernel

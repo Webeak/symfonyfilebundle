@@ -28,6 +28,6 @@ class RegisterProcessorsPass implements CompilerPassInterface
                 }
             }
         }
-        $container->setParameter('wb_file.processors_aliases', $aliases);
+        $container->setParameter('wb.file.processors_aliases', $aliases);
     }
 }
