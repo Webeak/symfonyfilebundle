@@ -40,13 +40,13 @@ class FileSystem
                                 $rootDir,
                                 $publicRootDir)
     {
+        $this->errorTracker = $errorTracker;
         $this->rootDir = $this->ensurePathExists($rootDir);
         $this->locksDir = $this->ensurePathExists($this->rootDir.'/locks');
         $this->tempDir = $this->ensurePathExists($this->rootDir.'/temp');
         $this->storageDir = $this->ensurePathExists($this->rootDir.'/storage');
         $this->publicStorageDir = $this->ensurePathExists($publicRootDir);
         $this->symfonyFilesystem = $symfonyFilesystem;
-        $this->errorTracker = $errorTracker;
     }
 
     /**
@@ -266,14 +266,16 @@ class FileSystem
     public function ensurePathExists($path)
     {
         if (!file_exists($path)) {
-            if (!mkdir($path, 0777, true)) {
-                $path = null;
-            }
+            @mkdir($path, 0777, true);
         }
         if ($path && ($output = realpath($path)) !== false) {
             return $output;
         }
-        $this->errorTracker->trackAndThrow(new IOException(sprintf('Unable to create path "%s".', $path)));
+        $this->errorTracker->trackAndThrow(new IOException(sprintf(
+            'Unable to create path "%s". '.
+            'Check you have required access rights on parent folders.',
+            $path
+        )));
     }
 
     /**
