@@ -2,16 +2,19 @@
 namespace Webeak\Bundle\FileBundle\Controller;
 
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Controller\JsonController;
+use Webeak\Bundle\EssentialBundle\HttpFoundation\XssiSafeJsonResponse;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
 use Webeak\Bundle\FileBundle\FileManager;
+use Webeak\Component\Utils\ArrayUtils;
 
 class FileManagerController extends JsonController
 {
@@ -45,13 +48,38 @@ class FileManagerController extends JsonController
             $resultFiles = $this->fileManager->registerTemporarily(array_values($files), $preset);
             $this->fileManager->flush();
             for ($i = 0, $ii = count($resultFiles); $i < $ii; ++$i) {
-                $publicFile = $resultFiles[0]->getPublicFile();
+                $publicFile = $resultFiles[$i]->getPublicFile();
                 $output[] = array_merge($publicFile ? $publicFile->exportGenericRepresentation() : [], [
-                    'errors' => $resultFiles[0]->getFlattenedErrors()
+                    'errors' => $resultFiles[$i]->getFlattenedErrors()
                 ]);
             }
         } else {
             throw new BadRequestHttpException('No file found in the request.', null, 400);
+        }
+        return $output;
+    }
+
+    /**
+     * @Route(name="wb_file_upload_single", path="/file/upload-single", methods={"POST"})
+     *
+     * @param Request $request
+     *
+     * @return array
+     *
+     * @throws
+     */
+    public function uploadSingle(Request $request)
+    {
+        $files = $request->files->all();
+        if (count($files) > 1) {
+            throw new BadRequestHttpException('More than one file has been found in the request.', null, 400);
+        }
+        $output = ArrayUtils::getValue($this->upload($request), 0);
+        if ($output === null) {
+            throw new HttpException(500, 'Unexpected upload result.');
+        }
+        if (array_key_exists('errors', $output) && count($output['errors']) > 0) {
+            return new XssiSafeJsonResponse($output, 400);
         }
         return $output;
     }

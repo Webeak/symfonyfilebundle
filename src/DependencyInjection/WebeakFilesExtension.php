@@ -39,7 +39,6 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
         $presets = $this->processPresets($config, $aliases);
         $container->setParameter('wb.file.save_path', $config['save_path']);
         $container->setParameter('wb.file.public_save_path', $config['public_save_path']);
-        $container->setParameter('wb.file.http_root', $config['http_root']);
         $container->setParameter('wb.file.constraints_aliases', $aliases);
         $container->setParameter('wb.file.configuration_presets', $presets);
         $container->setParameter('wb.file.storage_type', $config['storage_type']);

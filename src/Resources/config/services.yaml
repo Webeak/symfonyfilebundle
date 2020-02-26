@@ -55,10 +55,10 @@ services:
         public: true
         shared: false
         arguments:
+            - '@request_stack'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem'
             - '@router'
-            - '%wb.file.http_root%'
             - '%kernel.project_dir%'
 
     #
@@ -152,8 +152,8 @@ services:
         public: false
         arguments: ['@Webeak\Bundle\FileBundle\FileManager', '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface']
         tags:
-            - { name: wb_essentials.doctrine.listener, event: postLoad, method: postLoad, priority: 1 }
-            - { name: wb_essentials.doctrine.listener, event: onFlush, method: onFlush, priority: 1000 }
+            - { name: wb.doctrine_extensions.listener, event: postLoad, method: postLoad, priority: 1 }
+            - { name: wb.doctrine_extensions.listener, event: onFlush, method: onFlush, priority: 1000 }
 
     #
     # Commands

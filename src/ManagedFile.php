@@ -1,6 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Symfony\Component\Routing\Router;
@@ -63,25 +64,25 @@ class ManagedFile
     /**
      * Create a ManagedFile instance.
      *
+     * @param RequestStack          $requestStack,
      * @param ErrorTrackerInterface $errorTracker
      * @param FileSystem            $filesystem
      * @param Router                $router
-     * @param string|null           $httpRoot
      * @param string                $projectRootDir
      *
      * @throws
      */
-    public function __construct(ErrorTrackerInterface $errorTracker,
+    public function __construct(RequestStack $requestStack,
+                                ErrorTrackerInterface $errorTracker,
                                 FileSystem $filesystem,
                                 Router $router,
-                                ?string $httpRoot,
                                 string $projectRootDir)
     {
         $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
         $this->router = $router;
         $this->publicRootDir = $projectRootDir . '/public';
-        $this->httpRoot = $httpRoot;
+        $this->httpRoot = $requestStack->getCurrentRequest()->getSchemeAndHttpHost();
         $this->versions = [];
         $this->removedVersions = [];
         $this->errors = [];
@@ -369,11 +370,6 @@ class ManagedFile
         }
         $file = $this->getVersion($version);
         if ($file->isPublic()) {
-            if (!$this->httpRoot) {
-                $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
-                    'The "http_root" option of "wb_file" has not been defined. You must provide it in order to generate a public url.'
-                ));
-            }
             $relativePath = str_replace('\\', '/', str_replace($this->publicRootDir, '', $file->getRealPath()));
             return rtrim($this->httpRoot, '/').'/'.trim($relativePath, '/');
         }
