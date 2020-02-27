@@ -108,13 +108,19 @@ class EntityListener
             $newValue = ObjectUtils::readProperty($entity, $propertyName);
             $hasChanged = gettype($oldValue) !== gettype($newValue);
 
+            if ($oldValue instanceof PublicFileCollection) {
+                $oldValue = iterator_to_array($oldValue);
+            }
+            if ($newValue instanceof PublicFileCollection) {
+                $newValue = iterator_to_array($newValue);
+            }
             if (!$hasChanged) {
                 if ($oldValue instanceof PublicFile && $newValue instanceof PublicFile) {
                     $hasChanged = count(ArrayUtils::compare(
                             $oldValue->exportGenericRepresentation(),
                             $newValue->exportGenericRepresentation()
                         )) > 0;
-                } else if (is_array($oldValue)) {
+                } else if (is_array($newValue)) {
                     $hasChanged = count(ArrayUtils::compare($oldValue, $newValue)) > 0;
                 }
             }

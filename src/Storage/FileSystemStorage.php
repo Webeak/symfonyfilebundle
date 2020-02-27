@@ -539,6 +539,9 @@ class FileSystemStorage implements StorageInterface
      */
     public function saveTimeLimitedFiles(): void
     {
+        if (!count($this->expiringFiles) > 0) {
+            return ;
+        }
         if (!$this->sharedStorage) {
             $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
                 'You must install "webeak/shared-storage-bundle" in order to set an expiration date to a file.'

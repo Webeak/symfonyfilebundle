@@ -448,12 +448,24 @@ class Configuration
         for ($i = 0, $ii = count($this->processorsSequences); $i < $ii; ++$i) {
             $sequence = [];
             for ($j = 0, $jj = count($this->processorsSequences[$i]); $j < $jj; ++$j) {
+                $sequenceOptions = ArrayUtils::ensureArray($this->processorsSequences[$i][$j]->getOptions());
+                ksort($sequenceOptions);
                 $sequence[] = [
                     'id' => $this->processorsSequences[$i][$j]->getServiceId(),
-                    'options' => $this->processorsSequences[$i][$j]->getOptions()
+                    'options' => $sequenceOptions
                 ];
             }
             $sequences[] = $sequence;
+        }
+        ksort($this->usersWhiteListCumulative);
+        ksort($this->usersWhiteListExclusive);
+        ksort($this->usersBlackList);
+        ksort($this->requiredRoles);
+        if (is_array($this->extra)) {
+            ksort($this->extra);
+        }
+        if (is_array($this->publicExtra)) {
+            ksort($this->publicExtra);
         }
         return [
             'constraints' => array_map('serialize', $this->constraints),

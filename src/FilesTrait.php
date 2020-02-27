@@ -101,9 +101,11 @@ trait FilesTrait
         // The real remove will be done after confirmations (see "handleSingleFileChange" for more details).
         //
         $toRemove = [];
+        $used = [];
         for ($i = 0; $i < $bc; ++$i) {
             for ($j = 0; $j < $nc; ++$j) {
-                if ($now[$j]->identifier === $before[$i]) {
+                if ($now[$j]->identifier === $before[$i] && !in_array($j, $used)) {
+                    $used[] = $j;
                     break ;
                 }
             }
