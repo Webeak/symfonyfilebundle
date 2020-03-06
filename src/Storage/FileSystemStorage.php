@@ -34,7 +34,7 @@ class FileSystemStorage implements StorageInterface
 
     /** @var SharedStorageInterface */
     private $sharedStorage;
-    
+
     /** @var ErrorTrackerInterface */
     private $errorTracker;
 
@@ -522,7 +522,7 @@ class FileSystemStorage implements StorageInterface
         try {
             $this->expiringFiles = ArrayUtils::ensureArray($this->sharedStorage->getAndLockUntilNextSet(
                 self::EXPIRATION_DATES_STORAGE_KEY,
-                'wb',
+                'wb:file-bundle',
                 5000,
                 $this->expiringFilesLock
             ));
