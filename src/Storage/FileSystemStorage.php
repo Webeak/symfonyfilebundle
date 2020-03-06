@@ -548,7 +548,7 @@ class FileSystemStorage implements StorageInterface
             ));
         }
         try {
-            $this->sharedStorage->set(self::EXPIRATION_DATES_STORAGE_KEY, $this->expiringFiles, 'wb');
+            $this->sharedStorage->set(self::EXPIRATION_DATES_STORAGE_KEY, $this->expiringFiles, 'wb:file-bundle');
             if ($this->expiringFilesLock) {
                 $this->expiringFilesLock->release();
                 $this->expiringFilesLock = null;
