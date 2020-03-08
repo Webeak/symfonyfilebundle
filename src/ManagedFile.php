@@ -2,11 +2,10 @@
 namespace Webeak\Bundle\FileBundle;
 
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Symfony\Component\Routing\Router;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 
@@ -21,7 +20,7 @@ class ManagedFile
     /** @var FileSystem */
     protected $filesystem;
 
-    /** @var Router */
+    /** @var RouterInterface */
     protected $router;
 
     /**
@@ -67,7 +66,7 @@ class ManagedFile
      * @param RequestStack          $requestStack,
      * @param ErrorTrackerInterface $errorTracker
      * @param FileSystem            $filesystem
-     * @param Router                $router
+     * @param RouterInterface       $router
      * @param string                $projectRootDir
      *
      * @throws
@@ -75,7 +74,7 @@ class ManagedFile
     public function __construct(RequestStack $requestStack,
                                 ErrorTrackerInterface $errorTracker,
                                 FileSystem $filesystem,
-                                Router $router,
+                                RouterInterface $router,
                                 string $projectRootDir)
     {
         $this->errorTracker = $errorTracker;
@@ -377,9 +376,9 @@ class ManagedFile
             'identifier' => $this->identifier,
             'version' => $version,
             'type' => $file->isImage() ? 'i' : 'g'
-        ], Router::ABSOLUTE_URL);
+        ], RouterInterface::ABSOLUTE_URL);
     }
-    
+
     /**
      * Set the identifier.
      *
