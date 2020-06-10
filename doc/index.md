@@ -58,12 +58,12 @@ The ideal is to create cron task to execute the commands automatically. Below a 
 
 <u>**Clears temporary files**</u>:
 ```
-*/1 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:file:clear
+*/1 * * * * php /var/www/vhosts/project-name/httpdocs/bin/console wb:file:clear
 ```
 
 <u>**Clears expired files files**</u>:
 ```
-*/10 * * * * php /var/www/vhosts/clic-et-menu.fr/api/httpdocs/bin/console wb:file:clear-expired
+*/10 * * * * php /var/www/vhosts/project-name/httpdocs/bin/console wb:file:clear-expired
 ```
 
 ## Server configuration
