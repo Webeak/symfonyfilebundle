@@ -1,6 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Controller;
 
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -64,7 +65,7 @@ class FileManagerController extends JsonController
      *
      * @param Request $request
      *
-     * @return array
+     * @return array|Response
      *
      * @throws
      */
@@ -85,17 +86,18 @@ class FileManagerController extends JsonController
     }
 
     /**
-     * @Route(name="wb_file_proxy", path="/file/proxy/{identifier}/{version}/{type}", methods={"GET"})
+     * @Route(name="wb_file_proxy", path="/file/proxy/{identifier}/{version}/{type}/{slug}", methods={"GET"})
      *
      * @param string $identifier
      * @param string $version
      * @param string $type
+     * @param string $slug
      *
      * @return Response
      *
      * @throws
      */
-    public function proxy($identifier, $version = 'default', $type = null, KernelInterface $kernel)
+    public function proxy($identifier, $version = 'default', $type = null, $slug = null, KernelInterface $kernel)
     {
         try {
             $file = $this->fileManager->get($identifier);
@@ -103,7 +105,12 @@ class FileManagerController extends JsonController
                 throw new FileNotFoundException('Not found.');
             }
             $versionFile = $file->getVersion($version);
-            return new BinaryFileResponse($versionFile);
+            $response = new BinaryFileResponse($versionFile);
+            $response->setContentDisposition(
+                ResponseHeaderBag::DISPOSITION_INLINE,
+                $versionFile->getVirtualName()
+            );
+            return $response;
         } catch (FileNotFoundException $e) {
             return $this->handleFetchErrorResponse(
                 $type,

@@ -8,6 +8,7 @@ use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
+use Webeak\Component\Utils\UtilPhp;
 
 /**
  * Represent a file managed by the file manager.
@@ -372,11 +373,18 @@ class ManagedFile
             $relativePath = str_replace('\\', '/', str_replace($this->publicRootDir, '', $file->getRealPath()));
             return rtrim($this->httpRoot, '/').'/'.trim($relativePath, '/');
         }
+        $realFileName = $file->getVirtualName();
+        $realFileExtension = '';
+        if (($pos = strrpos($realFileName, '.')) !== false) {
+            $realFileExtension = substr($realFileName, $pos);
+            $realFileName = substr($realFileName, 0, $pos);
+        }
         return $this->router->generate('wb_file_proxy', [
             'identifier' => $this->identifier,
             'version' => $version,
-            'type' => $file->isImage() ? 'i' : 'g'
-        ], RouterInterface::ABSOLUTE_URL);
+            'type' => $file->isImage() ? 'i' : 'g',
+            'slug' => UtilPhp::slugify($realFileName) . $realFileExtension
+        ], RouterInterface::ABSOLUTE_PATH);
     }
 
     /**
