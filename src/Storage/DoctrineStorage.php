@@ -227,8 +227,8 @@ class DoctrineStorage implements StorageInterface
         $repository = $em->getRepository($this->configuration['entity_class']);
         $builder = $repository->createQueryBuilder('e');
         $builder->where('e.expirationDate is not null');
-        $builder->andWhere('e.expirationDate <= ?1');
-        $builder->setParameter(1, new \DateTime);
+        $builder->andWhere('e.expirationDate <= :date');
+        $builder->setParameter('date', date('Y-m-d H:i:s'));
         try {
             $files = $builder->getQuery()->getResult();
             if ($output !== null) { $output->writeln('<info>'.count($files).'</info> file(s) found.'); }

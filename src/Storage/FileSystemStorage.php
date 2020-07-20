@@ -524,6 +524,7 @@ class FileSystemStorage implements StorageInterface
                 self::EXPIRATION_DATES_STORAGE_KEY,
                 'wb:file-bundle',
                 5000,
+                10000,
                 $this->expiringFilesLock
             ));
         } catch (\Exception | \Throwable $e) {

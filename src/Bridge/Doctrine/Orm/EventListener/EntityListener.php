@@ -60,6 +60,11 @@ class EntityListener
     }
 
     /**
+     * TODO: Do some optimization here. Currently we do a validateFiles() for each inserted/updated/deleted entity.
+     * The method then do getClassMetadata() which is slow.
+     * TODO: Store in the cache if there are files fields in each type of entity to avoid doing all this for nothing.
+     * TODO: In a second time, try to only do the processing if an actual file has changed, not any property of the entity.
+     *
      * Doctrine 'onFlush' hook callback.
      *
      * @param OnFlushEventArgs $args

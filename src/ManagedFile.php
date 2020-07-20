@@ -78,11 +78,12 @@ class ManagedFile
                                 RouterInterface $router,
                                 string $projectRootDir)
     {
+        $currentRequest = $requestStack->getCurrentRequest();
         $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
         $this->router = $router;
         $this->publicRootDir = $projectRootDir . '/public';
-        $this->httpRoot = $requestStack->getCurrentRequest()->getSchemeAndHttpHost();
+        $this->httpRoot = $currentRequest ? $currentRequest->getSchemeAndHttpHost() : '/';
         $this->versions = [];
         $this->removedVersions = [];
         $this->errors = [];
