@@ -65,6 +65,9 @@ class FileSystemStorage implements StorageInterface
     /** @var string */
     private $metadataRootDir;
 
+    /** @var boolean */
+    private $changed;
+
     public function __construct(ContainerInterface $container,
                                 KernelInterface $kernel,
                                 ErrorTrackerInterface $errorTracker,
@@ -81,6 +84,7 @@ class FileSystemStorage implements StorageInterface
         $this->expiringFiles = null;
         $this->expiringFilesLock = null;
         $this->sharedStorage = null;
+        $this->changed = false;
         $this->metadataRootDir = $kernel->getProjectDir() . '/var/storage/wb-files/metadata';
     }
 
@@ -161,6 +165,7 @@ class FileSystemStorage implements StorageInterface
             'data' => $this->serializeManagedFile($file),
             'file' => $file
         ];
+        $this->changed = true;
         return $file;
     }
 
@@ -196,6 +201,7 @@ class FileSystemStorage implements StorageInterface
                     'file' => $file
                 ];
             }
+            $this->changed = true;
         }
     }
 
@@ -210,6 +216,7 @@ class FileSystemStorage implements StorageInterface
             if ($file->hasVersion($version[$i])) {
                 $file->removeVersion($version[$i]);
                 $this->persist($file);
+                $this->changed = true;
             }
         }
     }
@@ -222,6 +229,7 @@ class FileSystemStorage implements StorageInterface
         $file = $this->ensureManagedFile($file);
         $file->getConfiguration()->setExpirationDate(null);
         $this->persist($file);
+        $this->changed = true;
     }
 
     /**
@@ -229,6 +237,9 @@ class FileSystemStorage implements StorageInterface
      */
     public function flush()
     {
+        if (!$this->changed) {
+            return ;
+        }
         $this->loadTimeLimitedFiles();
         $this->filesystem->ensurePathExists($this->metadataRootDir . '/' . self::METADATA_DIR);
         $this->filesystem->ensurePathExists($this->metadataRootDir . '/' . self::HASHES_DIR);
@@ -523,8 +534,8 @@ class FileSystemStorage implements StorageInterface
             $this->expiringFiles = ArrayUtils::ensureArray($this->sharedStorage->getAndLockUntilNextSet(
                 self::EXPIRATION_DATES_STORAGE_KEY,
                 'wb:file-bundle',
-                5000,
-                10000,
+                5,
+                10,
                 $this->expiringFilesLock
             ));
         } catch (\Exception | \Throwable $e) {

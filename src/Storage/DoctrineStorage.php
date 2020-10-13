@@ -51,6 +51,9 @@ class DoctrineStorage implements StorageInterface
     /** @var ManagedFile[] */
     private $waitingForFlush;
 
+    /** @var boolean */
+    private $changed;
+
     public function __construct(ContainerInterface $container,
                                 ManagerRegistry $doctrine,
                                 ErrorTrackerInterface $errorTracker,
@@ -67,6 +70,7 @@ class DoctrineStorage implements StorageInterface
         $this->waitingForPersist = [];
         $this->waitingForRemove = [];
         $this->waitingForFlush = [];
+        $this->changed = false;
     }
 
     /**
@@ -127,6 +131,7 @@ class DoctrineStorage implements StorageInterface
             $file->setVersion($name, $version);
         }
         $this->waitingForFlush[$entity->getIdentifier()] = $entity;
+        $this->changed = true;
         return $file;
     }
 
@@ -151,11 +156,13 @@ class DoctrineStorage implements StorageInterface
                 }
                 if (!in_array($file, $this->waitingForRemove, true)) {
                     $this->waitingForRemove[] = $entity;
+                    $this->changed = true;
                 }
             } else {
                 $entity->setUsageCount($file->getUsageCount());
             }
             $this->waitingForFlush[$entity->getIdentifier()] = $entity;
+            $this->changed = true;
         }
     }
 
@@ -189,6 +196,9 @@ class DoctrineStorage implements StorageInterface
      */
     public function flush()
     {
+        if (!$this->changed) {
+            return ;
+        }
         $waitingForFlush = array_values($this->waitingForFlush);
         $waitingForRemove = array_values($this->waitingForRemove);
         $this->waitingForFlush = [];
@@ -214,6 +224,7 @@ class DoctrineStorage implements StorageInterface
                 );
             }
         }
+        $this->changed = false;
     }
 
     /**
