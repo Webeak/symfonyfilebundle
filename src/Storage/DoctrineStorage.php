@@ -344,9 +344,9 @@ class DoctrineStorage implements StorageInterface
             }
         }
         if ($throw) {
-            $this->errorTracker->trackAndThrow(new FileNotFoundException(
+            throw new FileNotFoundException(
                 sprintf('No file id "%s" has been found. It may have been removed.', $search)
-            ));
+            );
         }
         return null;
     }

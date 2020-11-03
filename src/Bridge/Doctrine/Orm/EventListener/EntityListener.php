@@ -2,6 +2,7 @@
 namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\EventListener;
 
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
+use Webeak\Bundle\EssentialBundle\StaticLogger;
 use Webeak\Bundle\FileBundle\FilesTrait;
 use Webeak\Component\Utils\ArrayUtils;
 use Webeak\Component\Utils\ObjectUtils;
@@ -190,7 +191,7 @@ class EntityListener
                 } catch (\Exception $e) {
                     // An exception here MUST NOT interrupt the process.
                     // Simply log it and continue.
-                    $this->errorTracker->track($e);
+                    StaticLogger::error($e->getMessage(), ['exception' => $e]);
                 }
             }
         }
