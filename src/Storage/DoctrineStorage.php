@@ -12,7 +12,7 @@ use Webeak\Bundle\FileBundle\File;
 use Webeak\Bundle\FileBundle\FileSystem;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
