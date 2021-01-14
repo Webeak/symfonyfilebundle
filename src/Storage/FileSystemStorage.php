@@ -187,13 +187,8 @@ class FileSystemStorage implements StorageInterface
                 $this->waitingForRemove[] = $file;
 
                 // Ensure the file have not been persisted before, we want to remove it now.
-                for ($i = 0, $c = count($this->waitingForFlush); $i < $c; ++$i) {
-                    /** @var ManagedFile $waitingForFlush */
-                    $waitingForFlush = $this->waitingForFlush[$i];
-                    if ($waitingForFlush->getIdentifier() === $identifier) {
-                        array_splice($this->waitingForFlush, $i--, 1);
-                        --$c;
-                    }
+                if (array_key_exists($identifier, $this->waitingForFlush)) {
+                    unset($this->waitingForFlush[$identifier]);
                 }
             } else {
                 $this->waitingForFlush[$identifier] = [
