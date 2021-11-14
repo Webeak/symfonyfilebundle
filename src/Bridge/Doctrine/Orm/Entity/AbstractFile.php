@@ -9,7 +9,7 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
     /**
      * Original name of the first version of the file.
      *
-     * @ORM\Column(type="json_array")
+     * @ORM\Column(type="json")
      */
     protected $name;
 
@@ -23,28 +23,28 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
     /**
      * Versions names.
      *
-     * @ORM\Column(type="json_array")
+     * @ORM\Column(type="json")
      */
     protected $versions;
 
     /**
      * Hold the whole configuration as a JSON object.
      *
-     * @ORM\Column(type="json_array")
+     * @ORM\Column(type="json")
      */
     protected $configuration;
 
     /**
      * Extra custom data dedicated to the app logic.
      *
-     * @ORM\Column(type="json_array")
+     * @ORM\Column(type="json")
      */
     protected $extra;
 
     /**
      * Extra custom data publicly visible.
      *
-     * @ORM\Column(type="json_array")
+     * @ORM\Column(type="json")
      */
     protected $publicExtra;
 
