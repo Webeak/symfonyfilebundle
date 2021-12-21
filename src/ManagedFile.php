@@ -372,7 +372,7 @@ class ManagedFile
         $file = $this->getVersion($version);
         if ($file->isPublic()) {
             $relativePath = str_replace('\\', '/', str_replace($this->publicRootDir, '', $file->getRealPath()));
-            return '/'.trim($relativePath, '/');
+            return rtrim($this->httpRoot, '/').'/'.trim($relativePath, '/');
         }
         $realFileName = $file->getVirtualName();
         $realFileExtension = '';
