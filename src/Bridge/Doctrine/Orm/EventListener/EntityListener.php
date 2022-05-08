@@ -185,7 +185,10 @@ class EntityListener
                         $this->fileManager->confirmRegistration($value);
                     } else if ($value instanceof PublicFileCollection) {
                         foreach ($value as $file) {
-                            $this->fileManager->confirmRegistration($file);
+                            // Very important to reassign the file because it may have changed
+                            // if the same file is already stored.
+                            $registeredPublicFile = $this->fileManager->confirmRegistration($file);
+                            ObjectUtils::writeProperty($entity, $data['fieldName'], $registeredPublicFile);
                         }
                     }
                 } catch (\Exception $e) {
