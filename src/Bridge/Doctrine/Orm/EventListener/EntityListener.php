@@ -182,14 +182,16 @@ class EntityListener
                 try {
                     $value = ObjectUtils::readProperty($entity, $data['fieldName']);
                     if ($value instanceof PublicFile) {
-                        $this->fileManager->confirmRegistration($value);
+                        $newPublicFile = $this->fileManager->confirmRegistration($value);
+                        ObjectUtils::writeProperty($entity, $data['fieldName'], $newPublicFile);
                     } else if ($value instanceof PublicFileCollection) {
+                        $array = [];
                         foreach ($value as $file) {
                             // Very important to reassign the file because it may have changed
                             // if the same file is already stored.
-                            $registeredPublicFile = $this->fileManager->confirmRegistration($file);
-                            ObjectUtils::writeProperty($entity, $data['fieldName'], $registeredPublicFile);
+                            $array[] = $this->fileManager->confirmRegistration($file);
                         }
+                        ObjectUtils::writeProperty($entity, $data['fieldName'], PublicFileCollection::createFromArray($array));
                     }
                 } catch (\Exception $e) {
                     // An exception here MUST NOT interrupt the process.
