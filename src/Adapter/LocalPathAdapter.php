@@ -3,20 +3,20 @@ namespace Webeak\Bundle\FileBundle\Adapter;
 
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 
 /**
  * Handle local path to a file.
  */
 class LocalPathAdapter implements AdapterInterface
 {
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     private $filesystem;
 
     /** @var ErrorTrackerInterface */
     private $errorTracker;
 
-    public function __construct(FileSystem $fileSystem, ErrorTrackerInterface $errorTracker)
+    public function __construct(FileSystemInterface $fileSystem, ErrorTrackerInterface $errorTracker)
     {
         $this->filesystem = $fileSystem;
         $this->errorTracker = $errorTracker;

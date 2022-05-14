@@ -27,7 +27,7 @@ services:
             - '@validator'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
             - '%wb.file.storage_type%'
             - '%wb.file.temp_files_lifetime%'
@@ -44,20 +44,13 @@ services:
             - '%wb.file.constraints_aliases%'
             - '%wb.file.processors_aliases%'
 
-    Webeak\Bundle\FileBundle\FileSystem:
-        arguments:
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@filesystem'
-            - '%wb.file.save_path%'
-            - '%wb.file.public_save_path%'
-
     Webeak\Bundle\FileBundle\ManagedFile:
         public: true
         shared: false
         arguments:
             - '@request_stack'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@router'
             - '%kernel.project_dir%'
 
@@ -71,20 +64,20 @@ services:
     Webeak\Bundle\FileBundle\Adapter\UploadedFileAdapter:
         arguments:
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\HttpPathAdapter:
         arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\LocalPathAdapter:
         arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
@@ -93,7 +86,7 @@ services:
     # Processors
     #
     Webeak\Bundle\FileBundle\Processor\CreateVersionProcessor:
-        arguments: ['@Webeak\Bundle\FileBundle\FileSystem']
+        arguments: ['@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface']
         tags:
             - { name: wb.file.file_manager_processor, alias: createVersion }
 
@@ -110,7 +103,7 @@ services:
             - '@service_container'
             - '@kernel'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         calls:
             - [setSharedStorage, ['@?Webeak\Bundle\SharedStorageBundle\SharedStorageInterface']]
         tags:
@@ -121,10 +114,36 @@ services:
             - '@service_container'
             - '@doctrine'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '%wb.file.doctrine_storage%'
         tags:
             - { name: wb.file.file_manager_storage, alias: doctrine }
+
+    #
+    # FileSystem
+    #
+    Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface: ~
+
+    Webeak\Bundle\FileBundle\FileSystem\LocalFileSystem:
+        public: true
+        arguments:
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
+            - '@filesystem'
+            - '%wb.file.save_path%'
+            - '%wb.file.public_save_path%'
+        tags:
+            - { name: wb.file.file_filesystem, alias: local }
+
+    Webeak\Bundle\FileBundle\FileSystem\AwsS3FileSystem:
+        public: true
+        arguments:
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
+            - '@filesystem'
+            - '@Webeak\Bundle\FileBundle\Aws\S3Bucket'
+            - '%wb.file.save_path%'
+            - '%wb.file.public_save_path%'
+        tags:
+            - { name: wb.file.file_filesystem, alias: aws_s3 }
 
     #
     # Normalizer
@@ -166,6 +185,15 @@ services:
 
     Webeak\Bundle\FileBundle\Command\ClearTempFilesCommand:
         arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: 'console.command', command: 'wb:file:clear' }
+
+    #
+    # AWS
+    #
+    Webeak\Bundle\FileBundle\Aws\S3Bucket:
+        public: true
+        arguments:
+            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
+            - '%wb.file.aws_s3_storage%'

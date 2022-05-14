@@ -11,7 +11,7 @@ use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Configuration;
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -38,7 +38,7 @@ class FileSystemStorage implements StorageInterface
     /** @var ErrorTrackerInterface */
     private $errorTracker;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     private $filesystem;
 
     /** @var FileEntityInterface[] */
@@ -71,7 +71,7 @@ class FileSystemStorage implements StorageInterface
     public function __construct(ContainerInterface $container,
                                 KernelInterface $kernel,
                                 ErrorTrackerInterface $errorTracker,
-                                FileSystem $filesystem)
+                                FileSystemInterface $filesystem)
     {
         $this->container = $container;
         $this->errorTracker = $errorTracker;

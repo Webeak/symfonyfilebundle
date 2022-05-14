@@ -157,6 +157,19 @@ class File extends SymfonyFile
         return $this;
     }
 
+    public function getHash()
+    {
+        try {
+            $realPath = $this->getRealPath();
+            if ($realPath) {
+                return '#' . md5_file($realPath);
+            }
+        } catch (\Exception | \Throwable $e) {
+            // Ignore
+        }
+        return md5(microtime()); // So no risk to incorrectly match a hash.
+    }
+    
     /**
      * Try to get the extension of the file.
      *

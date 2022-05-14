@@ -1,20 +1,21 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\EssentialBundle\RandomTaskFactory;
 use Webeak\Bundle\EssentialBundle\UniqueIdGenerator;
-use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Adapter\AdapterInterface;
+use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Bundle\FileBundle\Processor\ProcessorInterface;
 use Webeak\Bundle\FileBundle\Storage\StorageInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Gives an easy interface between files and the application.
@@ -49,7 +50,7 @@ class FileManager
     /** @var StorageInterface */
     private $storages;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     private $filesystem;
 
     /** @var RandomTaskFactory */
@@ -65,7 +66,7 @@ class FileManager
                                 ValidatorInterface $validator,
                                 ErrorTrackerInterface $errorTracker,
                                 UniqueIdGenerator $uniqueIdGenerator,
-                                FileSystem $filesystem,
+                                FileSystemInterface $filesystem,
                                 RandomTaskFactory $randomTaskFactory,
                                 $storageType,
                                 $tempFilesLifetime)

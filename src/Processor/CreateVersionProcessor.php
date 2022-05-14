@@ -2,7 +2,7 @@
 namespace Webeak\Bundle\FileBundle\Processor;
 
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Bundle\FileBundle\ManagedFile;
 
 /**
@@ -17,10 +17,10 @@ class CreateVersionProcessor extends AbstractProcessor
      */
     public $name;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     private $filesystem;
 
-    public function __construct(FileSystem $filesystem)
+    public function __construct(FileSystemInterface $filesystem)
     {
         $this->filesystem = $filesystem;
     }

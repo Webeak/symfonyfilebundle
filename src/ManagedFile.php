@@ -8,6 +8,7 @@ use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Component\Utils\UtilPhp;
 
 /**
@@ -18,7 +19,7 @@ class ManagedFile
     /** @var ErrorTrackerInterface */
     protected $errorTracker;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     protected $filesystem;
 
     /** @var RouterInterface */
@@ -66,7 +67,7 @@ class ManagedFile
      *
      * @param RequestStack          $requestStack,
      * @param ErrorTrackerInterface $errorTracker
-     * @param FileSystem            $filesystem
+     * @param FileSystemInterface   $filesystem
      * @param RouterInterface       $router
      * @param string                $projectRootDir
      *
@@ -74,7 +75,7 @@ class ManagedFile
      */
     public function __construct(RequestStack $requestStack,
                                 ErrorTrackerInterface $errorTracker,
-                                FileSystem $filesystem,
+                                FileSystemInterface $filesystem,
                                 RouterInterface $router,
                                 string $projectRootDir)
     {
@@ -730,11 +731,11 @@ class ManagedFile
         $keys = array_keys($this->versions);
         sort($keys);
         for ($i = 0, $ii = count($keys); $i < $ii; ++$i) {
-            $realPath = $this->versions[$keys[$i]]->getRealPath();
-            if ($realPath) {
-                $hashes .= '#' . md5_file($realPath);
+            $version = $this->versions[$keys[$i]];
+            if ($version instanceof File) {
+                $hashes .= $version->getHash();
             } else {
-                $hashes .= '#not-found'; // So no risk to incorrectly match a hash.
+                $hashes .= md5(((string)microtime()).rand(0, 10000));
             }
         }
         return md5($hashes);

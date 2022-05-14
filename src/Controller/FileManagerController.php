@@ -105,11 +105,19 @@ class FileManagerController extends JsonController
                 throw new FileNotFoundException('Not found.');
             }
             $versionFile = $file->getVersion($version);
-            $response = new BinaryFileResponse($versionFile);
-            $response->setContentDisposition(
-                ResponseHeaderBag::DISPOSITION_INLINE,
-                $versionFile->getVirtualName()
-            );
+            $content = $versionFile->getContent();
+
+            $response = new Response();
+            $filename = $versionFile->getVirtualName();
+
+            $response->headers->set('Cache-Control', 'private');
+            $response->headers->set('Content-type', $file->getMimeType());
+            $response->headers->set('Content-Disposition', 'inline;');
+            $response->headers->set('Content-length',  strlen($content));
+
+            $response->sendHeaders();
+            $response->setContent($content);
+
             return $response;
         } catch (FileNotFoundException $e) {
             return $this->handleFetchErrorResponse(

@@ -1,18 +1,19 @@
 <?php
-namespace Webeak\Bundle\FileBundle;
+namespace Webeak\Bundle\FileBundle\FileSystem;
 
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Finder\Finder;
 use Symfony\Component\Filesystem\Filesystem as SymfonyFilesystem;
+use Symfony\Component\Finder\Finder;
+use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
+use Webeak\Bundle\FileBundle\File;
 use Webeak\Component\Utils\RandomGenerator;
 
 /**
  * Interface between the other services and the hard drive.
  */
-class FileSystem
+class LocalFileSystem implements FileSystemInterface
 {
     /** @var SymfonyFilesystem */
     protected $symfonyFilesystem;
@@ -359,5 +360,10 @@ class FileSystem
             }
         }
         if ($output) { $output->writeLn(sprintf('End of search.')); }
+    }
+
+    public function createFile($path): File
+    {
+        return new File($path);
     }
 }

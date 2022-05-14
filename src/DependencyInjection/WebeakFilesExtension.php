@@ -42,12 +42,19 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('wb.file.constraints_aliases', $aliases);
         $container->setParameter('wb.file.configuration_presets', $presets);
         $container->setParameter('wb.file.storage_type', $config['storage_type']);
+        $container->setParameter('wb.file.filesystem_type', $config['filesystem_type']);
         $container->setParameter('wb.file.temp_files_lifetime', $config['temp_files_lifetime']);
         $container->setParameter('wb.file.not_found_image_path', $config['not_found_image_path']);
         $container->setParameter('wb.file.access_denied_image_path', $config['access_denied_image_path']);
         $container->setParameter('wb.file.doctrine_storage', [
             'entity_class' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_class']),
             'entity_id_attr' => ArrayUtils::getValue($config, ['doctrine_storage', 'entity_id_attr'])
+        ]);
+        $container->setParameter('wb.file.aws_s3_storage', [
+            'region' => ArrayUtils::getValue($config, ['aws_s3_storage', 'region']),
+            'bucket' => ArrayUtils::getValue($config, ['aws_s3_storage', 'bucket']),
+            'credentials_key' => ArrayUtils::getValue($config, ['aws_s3_storage', 'credentials', 'key']),
+            'credentials_secret' => ArrayUtils::getValue($config, ['aws_s3_storage', 'credentials', 'secret'])
         ]);
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yaml');

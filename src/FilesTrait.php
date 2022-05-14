@@ -76,8 +76,8 @@ trait FilesTrait
      * @return PublicFile[]|null
      */
     protected function handleMultipleFileChange($before, $now) {
-        $before = ArrayUtils::ensureArray($before);
-        $now = ArrayUtils::ensureArray($now);
+        $before = $before instanceof PublicFileCollection ? iterator_to_array($before) : ArrayUtils::ensureArray($before);
+        $now = $now instanceof PublicFileCollection ? iterator_to_array($now) : ArrayUtils::ensureArray($now);
         for ($i = 0, $bc = count($before); $i < $bc; ++$i) {
             if (($normalized = $this->normalizeFileToIdentifier($before[$i])) !== null) {
                 $before[$i] = $normalized;

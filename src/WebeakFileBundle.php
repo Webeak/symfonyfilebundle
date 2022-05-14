@@ -2,6 +2,7 @@
 namespace Webeak\Bundle\FileBundle;
 
 use Webeak\Bundle\FileBundle\DependencyInjection\Compiler\RegisterAdaptersPass;
+use Webeak\Bundle\FileBundle\DependencyInjection\Compiler\RegisterFileSystemPass;
 use Webeak\Bundle\FileBundle\DependencyInjection\Compiler\RegisterProcessorsPass;
 use Webeak\Bundle\FileBundle\DependencyInjection\Compiler\RegisterStoragesPass;
 use Doctrine\DBAL\Types\Type;
@@ -28,6 +29,7 @@ class WebeakFileBundle extends Bundle
         $container->addCompilerPass(new RegisterAdaptersPass());
         $container->addCompilerPass(new RegisterProcessorsPass());
         $container->addCompilerPass(new RegisterStoragesPass());
+        $container->addCompilerPass(new RegisterFileSystemPass());
     }
 
     /**

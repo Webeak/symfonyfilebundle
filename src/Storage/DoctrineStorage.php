@@ -9,7 +9,7 @@ use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Configuration;
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
 use Doctrine\Persistence\ManagerRegistry;
@@ -30,7 +30,7 @@ class DoctrineStorage implements StorageInterface
     /** @var ErrorTrackerInterface */
     protected $errorTracker;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     protected $filesystem;
 
     /** @var array */
@@ -57,7 +57,7 @@ class DoctrineStorage implements StorageInterface
     public function __construct(ContainerInterface $container,
                                 ManagerRegistry $doctrine,
                                 ErrorTrackerInterface $errorTracker,
-                                FileSystem $filesystem,
+                                FileSystemInterface $filesystem,
                                 array $configuration)
     {
         $this->container = $container;
@@ -284,7 +284,7 @@ class DoctrineStorage implements StorageInterface
 
         $versions = $entity->getVersions();
         foreach ($versions as $name => $path) {
-            $version = new File($path);
+            $version = $this->filesystem->createFile($path);
             $version->setIdentifier($entity->getIdentifier());
             $version->setVersionName($name);
             $version->setVirtualName($entity->getName());

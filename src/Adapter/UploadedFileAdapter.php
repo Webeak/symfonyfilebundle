@@ -4,7 +4,7 @@ namespace Webeak\Bundle\FileBundle\Adapter;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\FileBundle\Exception\UploadException;
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -15,10 +15,10 @@ class UploadedFileAdapter implements AdapterInterface
     /** @var ErrorTrackerInterface */
     private $errorTracker;
 
-    /** @var FileSystem */
+    /** @var FileSystemInterface */
     private $filesystem;
 
-    public function __construct(ErrorTrackerInterface $errorTracker, FileSystem $filesystem)
+    public function __construct(ErrorTrackerInterface $errorTracker, FileSystemInterface $filesystem)
     {
         $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
