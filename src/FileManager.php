@@ -117,8 +117,7 @@ class FileManager
      */
     public function registerByContent($content, $name, $configuration = null)
     {
-        $path = $this->filesystem->writeTemporarily($content);
-        $file = new File($path);
+        $file = $this->filesystem->writeTemporarily($content);
         $file->setVirtualName($name);
         return $this->register($file, $configuration);
     }

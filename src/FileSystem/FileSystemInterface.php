@@ -57,7 +57,7 @@ interface FileSystemInterface
      *
      * @param mixed $content content of the file
      *
-     * @return string the absolute path to the file
+     * @return File the temporary file object
      */
     public function writeTemporarily($content);
     /**
