@@ -54,6 +54,9 @@ class FileManagerController extends JsonController
                     'errors' => $resultFiles[$i]->getFlattenedErrors()
                 ]);
             }
+            if (count($output) === 1 && array_key_exists('errors', $output[0])) {
+                throw new BadRequestHttpException(implode(', ', $output[0]['errors']), null, 400);
+            }
         } else {
             throw new BadRequestHttpException('No file found in the request.', null, 400);
         }
