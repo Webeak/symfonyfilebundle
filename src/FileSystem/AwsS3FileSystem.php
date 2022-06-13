@@ -1,17 +1,11 @@
 <?php
 namespace Webeak\Bundle\FileBundle\FileSystem;
 
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem as SymfonyFilesystem;
-use Symfony\Component\Finder\Finder;
 use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Exception\IOException;
-use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
-use Webeak\Bundle\FileBundle\Aws\AwsS3Bucket;
 use Webeak\Bundle\FileBundle\Aws\BucketFile;
 use Webeak\Bundle\FileBundle\Aws\S3Bucket;
 use Webeak\Bundle\FileBundle\File;
-use Webeak\Component\Utils\RandomGenerator;
 
 /**
  * Interface between the other services and Amazon S3.

@@ -193,10 +193,16 @@ class EntityListener
                         }
                         ObjectUtils::writeProperty($entity, $data['fieldName'], PublicFileCollection::createFromArray($array));
                     }
-                } catch (\Exception $e) {
+                } catch (\Exception | \Throwable $e) {
                     // An exception here MUST NOT interrupt the process.
                     // Simply log it and continue.
                     StaticLogger::error($e->getMessage(), ['exception' => $e]);
+
+                    if ($value instanceof PublicFile) {
+                        ObjectUtils::writeProperty($entity, $data['fieldName'], null);
+                    } else {
+                        ObjectUtils::writeProperty($entity, $data['fieldName'], []);
+                    }
                 }
             }
         }

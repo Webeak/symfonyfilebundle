@@ -111,10 +111,12 @@ class FileManagerController extends JsonController
 
             $response = new Response();
             $filename = $versionFile->getVirtualName();
+            $mimeType = $file->getMimeType();
+            $disposition = preg_match('/image|pdf/', $mimeType) ? 'inline' : 'attachment';
 
             $response->headers->set('Cache-Control', 'private');
-            $response->headers->set('Content-type', $file->getMimeType());
-            $response->headers->set('Content-Disposition', 'inline;');
+            $response->headers->set('Content-type', $mimeType);
+            $response->headers->set('Content-Disposition', $disposition.';');
             $response->headers->set('Content-length',  strlen($content));
 
             $response->sendHeaders();

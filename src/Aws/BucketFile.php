@@ -1,6 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Aws;
 
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\Mime\MimeTypes;
 use Webeak\Bundle\FileBundle\File;
 use Webeak\Bundle\FileBundle\FileSystem\AwsS3FileSystem;
@@ -38,7 +39,7 @@ class BucketFile extends File
     {
         return $this->getPath() . '/' . $this->getFilename();
     }
-    
+
     public function move(string $directory, string $name = null)
     {
         $target = $this->getTargetFile($directory, $name);
@@ -52,7 +53,7 @@ class BucketFile extends File
     {
         $content = AwsS3FileSystem::$Instance->read($this);
 
-        if (false === $content) {
+        if (!$content) {
             throw new FileException(sprintf('Could not get the content of the file "%s".', $this->getPathname()));
         }
 
