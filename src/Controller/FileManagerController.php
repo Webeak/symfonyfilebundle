@@ -99,7 +99,7 @@ class FileManagerController extends JsonController
      *
      * @throws
      */
-    public function proxy($identifier, $version = 'default', $type = null, $slug = null, KernelInterface $kernel)
+    public function proxy(KernelInterface $kernel, $identifier, $version = 'default', $type = null, $slug = null)
     {
         try {
             $file = $this->fileManager->get($identifier);
