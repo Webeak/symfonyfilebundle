@@ -26,7 +26,7 @@ services:
             - '@service_container'
             - '@validator'
             - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
-            - '@Webeak\Bundle\EssentialBundle\UniqueIdGenerator'
+            - '@Webeak\Bundle\DoctrineExtensionsBundle\Utils\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
             - '%wb.file.storage_type%'

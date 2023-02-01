@@ -21,6 +21,7 @@
         "symfony/validator": "~4.2||~4.3",
         "webeak/essential-bundle": "^1.0",
         "webeak/error-tracker-bundle": "^1.0",
+        "webeak/doctrine-extensions-bundle": "^1.0",
         "webeak/utils": "^1.0"
     },
     "suggest": {

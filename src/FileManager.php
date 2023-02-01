@@ -9,7 +9,7 @@ use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
 use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\EssentialBundle\RandomTaskFactory;
-use Webeak\Bundle\EssentialBundle\UniqueIdGenerator;
+use Webeak\Bundle\DoctrineExtensionsBundle\Utils\UniqueIdGenerator;
 use Webeak\Bundle\FileBundle\Adapter\AdapterInterface;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
