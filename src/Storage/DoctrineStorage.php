@@ -131,6 +131,7 @@ class DoctrineStorage implements StorageInterface
             $file->setVersion($name, $version);
         }
         $this->waitingForFlush[$entity->getIdentifier()] = $entity;
+        $this->knownManagedFiles[$this->configuration['entity_id_attr']][$entity->getIdentifier()] = $file;
         $this->changed = true;
         return $file;
     }

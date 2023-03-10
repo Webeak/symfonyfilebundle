@@ -111,7 +111,9 @@ class EntityListener
             return ;
         }
         foreach ($this->oldValues[$hash] as $propertyName => $oldValue) {
-            $newValue = ObjectUtils::readProperty($entity, $propertyName);
+            $getter = 'get'.ucfirst($propertyName);
+            $setter = 'set'.ucfirst($propertyName);
+            $newValue = method_exists($entity, $getter) ? $entity->$getter() : ObjectUtils::readProperty($entity, $propertyName);
             $hasChanged = gettype($oldValue) !== gettype($newValue);
 
             if ($oldValue instanceof PublicFileCollection) {
@@ -135,7 +137,11 @@ class EntityListener
                     $metadata = $em->getClassMetadata(get_class($entity), $entity);
                 }
                 $newValue = $this->handleFileChanges($oldValue, $newValue, $metadata->fieldMappings[$propertyName]['type'] ===  'files');
-                ObjectUtils::writeProperty($entity, $propertyName, $newValue);
+                if (method_exists($entity, $setter)) {
+                    $entity->$setter($newValue);
+                } else {
+                    ObjectUtils::writeProperty($entity, $propertyName, $newValue);
+                }
                 $changed = true;
             }
         }
