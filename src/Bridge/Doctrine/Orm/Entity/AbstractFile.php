@@ -1,86 +1,75 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity;
 
-use Webeak\Bundle\DoctrineExtensionsBundle\Entity\AbstractEntity;
 use Doctrine\ORM\Mapping as ORM;
+use Webeak\Bundle\EssentialBundle\Entity\AbstractEntity;
 
 abstract class AbstractFile extends AbstractEntity implements FileEntityInterface
 {
     /**
      * Original name of the first version of the file.
-     *
-     * @ORM\Column(type="json")
      */
-    protected $name;
+    #[ORM\Column(type: "string")]
+    protected string $name;
 
     /**
      * Mime type of the first version of the file.
-     *
-     * @ORM\Column(type="string", length=255, nullable=true)
      */
-    protected $mimeType;
+    #[ORM\Column(type: "string", length: 255, nullable: true)]
+    protected ?string $mimeType;
 
     /**
      * Versions names.
-     *
-     * @ORM\Column(type="json")
      */
-    protected $versions;
+    #[ORM\Column(type: "json")]
+    protected array $versions;
 
     /**
      * Hold the whole configuration as a JSON object.
-     *
-     * @ORM\Column(type="json")
      */
-    protected $configuration;
+    #[ORM\Column(type: "json")]
+    protected array $configuration;
 
     /**
      * Extra custom data dedicated to the app logic.
-     *
-     * @ORM\Column(type="json")
      */
-    protected $extra;
+    #[ORM\Column(type: "json")]
+    protected array $extra;
 
     /**
      * Extra custom data publicly visible.
-     *
-     * @ORM\Column(type="json")
      */
-    protected $publicExtra;
+    #[ORM\Column(type: "json")]
+    protected array $publicExtra;
 
     /**
      * Expiration date of the file.
-     *
-     * @ORM\Column(type="datetime", nullable=true)
      */
-    protected $expirationDate;
+    #[ORM\Column(type: "datetime", nullable: true)]
+    protected ?\DateTimeInterface $expirationDate;
 
     /**
      * Number of entities using the file.
-     *
-     * @ORM\Column(type="smallint")
      */
-    protected $usageCount;
+    #[ORM\Column(type: "smallint")]
+    protected int $usageCount;
 
     /**
      * Holds the md5 hash of the original file used to create this file.
-     *
-     * @ORM\Column(type="string", length=32, nullable=false)
      */
-    protected $sourceFileHash;
+    #[ORM\Column(type: "string", length: 32, nullable: false)]
+    protected string $sourceFileHash;
 
     /**
      * Holds the hash of the file. Used to test for duplicates.
      * The hash must have used the following values : name, configuration, extra, publicExtra, sourceFileHash.
-     *
-     * @ORM\Column(type="string", length=32, nullable=false)
      */
-    protected $hash;
+    #[ORM\Column(type: "string", length: 32, nullable: false)]
+    protected string $hash;
 
     public function __construct()
     {
         parent::__construct();
-        $this->name = null;
         $this->mimeType = null;
         $this->expirationDate = null;
         $this->versions = [];
@@ -88,18 +77,14 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
         $this->extra = [];
         $this->publicExtra = [];
         $this->usageCount = 0;
-        $this->sourceFileHash = 'toto';
-        $this->hash = 'toto';
+        $this->sourceFileHash = '';
+        $this->hash = '';
     }
 
     /**
      * Set the unique identifier of the file.
-     *
-     * @param string $identifier
-     *
-     * @return $this
      */
-    public function setIdentifier($identifier)
+    public function setIdentifier(string $identifier): static
     {
         $this->setRef($identifier);
         return $this;
@@ -107,22 +92,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get the unique identifier of the file.
-     *
-     * @return string
      */
-    public function getIdentifier()
+    public function getIdentifier(): string
     {
         return $this->getRef();
     }
 
     /**
      * Set name
-     *
-     * @param array $name
-     *
-     * @return AbstractFile
      */
-    public function setName($name)
+    public function setName(string $name): static
     {
         $this->name = $name;
         return $this;
@@ -130,22 +109,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get name
-     *
-     * @return array
      */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
     /**
      * Set mimeType
-     *
-     * @param string $mimeType
-     *
-     * @return AbstractFile
      */
-    public function setMimeType($mimeType)
+    public function setMimeType(string $mimeType): static
     {
         $this->mimeType = $mimeType;
         return $this;
@@ -153,22 +126,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get mimeType
-     *
-     * @return string
      */
-    public function getMimeType()
+    public function getMimeType(): string
     {
         return $this->mimeType;
     }
 
     /**
      * Add new versions
-     *
-     * @param array $versions
-     *
-     * @return AbstractFile
      */
-    public function addVersions(array $versions)
+    public function addVersions(array $versions): static
     {
         $this->versions = array_merge($this->versions, (array)$versions);
         return $this;
@@ -176,13 +143,8 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Add a new version
-     *
-     * @param string $name
-     * @param string $path
-     *
-     * @return AbstractFile
      */
-    public function addVersion($name, $path)
+    public function addVersion(string $name, string $path): static
     {
         $this->versions[$name] = $path;
         return $this;
@@ -190,12 +152,8 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Set the whole list of versions
-     *
-     * @param array $versions
-     *
-     * @return AbstractFile
      */
-    public function setVersions(array $versions)
+    public function setVersions(array $versions): static
     {
         $this->versions = $versions;
         return $this;
@@ -203,22 +161,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get versions
-     *
-     * @return array
      */
-    public function getVersions()
+    public function getVersions(): array
     {
         return $this->versions;
     }
 
     /**
      * Set configuration
-     *
-     * @param array $configuration
-     *
-     * @return AbstractFile
      */
-    public function setConfiguration(array $configuration)
+    public function setConfiguration(array $configuration): static
     {
         $this->configuration = $configuration;
         return $this;
@@ -226,22 +178,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get configuration
-     *
-     * @return array
      */
-    public function getConfiguration()
+    public function getConfiguration(): array
     {
         return $this->configuration;
     }
 
     /**
      * Set extra
-     *
-     * @param array $extra
-     *
-     * @return AbstractFile
      */
-    public function setExtra(array $extra)
+    public function setExtra(array $extra): static
     {
         $this->extra = $extra;
         return $this;
@@ -249,22 +195,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get extra
-     *
-     * @return array
      */
-    public function getExtra()
+    public function getExtra(): array
     {
         return $this->extra;
     }
 
     /**
      * Set public extra
-     *
-     * @param array $extra
-     *
-     * @return AbstractFile
      */
-    public function setPublicExtra(array $extra)
+    public function setPublicExtra(array $extra): static
     {
         $this->publicExtra = $extra;
         return $this;
@@ -272,22 +212,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get public extra
-     *
-     * @return array
      */
-    public function getPublicExtra()
+    public function getPublicExtra(): array
     {
         return $this->publicExtra;
     }
 
     /**
      * Set the expiration date of the file
-     *
-     * @param \DateTime $date
-     *
-     * @return AbstractFile
      */
-    public function setExpirationDate(\DateTime $date = null)
+    public function setExpirationDate(?\DateTimeInterface $date = null): static
     {
         $this->expirationDate = $date;
         return $this;
@@ -295,32 +229,24 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Get the expiration date of the file
-     *
-     * @return array
      */
-    public function getExpirationDate()
+    public function getExpirationDate(): ?\DateTimeInterface
     {
         return $this->expirationDate;
     }
 
     /**
      * Gets the total number of entities using this file.
-     *
-     * @return integer
      */
-    public function getUsageCount()
+    public function getUsageCount(): int
     {
         return $this->usageCount;
     }
 
     /**
      * Sets the total number of entities using this file.
-     *
-     * @param integer $count
-     *
-     * @return AbstractFile
      */
-    public function setUsageCount($count)
+    public function setUsageCount(int $count): static
     {
         $this->usageCount = $count;
         return $this;
@@ -328,12 +254,8 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Sets the md5 hash of the source file.
-     *
-     * @param string $hash
-     *
-     * @return $this
      */
-    public function setSourceFileHash($hash)
+    public function setSourceFileHash(string $hash): FileEntityInterface
     {
         $this->sourceFileHash = $hash;
         return $this;
@@ -341,22 +263,16 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Gets the md5 hash of the source file.
-     *
-     * @return string
      */
-    public function getSourceFileHash()
+    public function getSourceFileHash(): string
     {
         return $this->sourceFileHash;
     }
 
     /**
      * Sets the md5 hash of the AbstractFile.
-     *
-     * @param string $hash
-     *
-     * @return $this
      */
-    public function setHash($hash)
+    public function setHash(string $hash): FileEntityInterface
     {
         $this->hash = $hash;
         return $this;
@@ -364,10 +280,8 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
 
     /**
      * Gets the md5 hash of the AbstractFile.
-     *
-     * @return string
      */
-    public function getHash()
+    public function getHash(): string
     {
         return $this->hash;
     }

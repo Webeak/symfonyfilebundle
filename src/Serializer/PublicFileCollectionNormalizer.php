@@ -10,7 +10,7 @@ class PublicFileCollectionNormalizer extends PublicFileNormalizer
     /**
      * {@inheritdoc}
      */
-    public function normalize($object, $format = null, array $context = [])
+    public function normalize($object, $format = null, array $context = []): array
     {
         /** @var PublicFileCollection $object */
         $output = [];
@@ -23,7 +23,7 @@ class PublicFileCollectionNormalizer extends PublicFileNormalizer
     /**
      * {@inheritdoc}
      */
-    public function denormalize($data, $class, $format = null, array $context = [])
+    public function denormalize($data, $type, $format = null, array $context = []): PublicFileCollection
     {
         $output = new PublicFileCollection();
         $data = ArrayUtils::ensureArray($data);
@@ -38,7 +38,7 @@ class PublicFileCollectionNormalizer extends PublicFileNormalizer
     /**
      * {@inheritdoc}
      */
-    public function supportsDenormalization($data, $type, $format = null)
+    public function supportsDenormalization($data, $type, $format = null): bool
     {
         return $type === PublicFileCollection::class;
     }
@@ -46,7 +46,7 @@ class PublicFileCollectionNormalizer extends PublicFileNormalizer
     /**
      * {@inheritdoc}
      */
-    public function supportsNormalization($data, $format = null)
+    public function supportsNormalization($data, $format = null): bool
     {
         return self::FORMAT === $format && $data instanceof PublicFileCollection;
     }

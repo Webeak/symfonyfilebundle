@@ -1,49 +1,35 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Controller;
 
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\Routing\Annotation\Route;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Controller\JsonController;
-use Webeak\Bundle\EssentialBundle\HttpFoundation\XssiSafeJsonResponse;
-use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Routing\Annotation\Route;
+use Webeak\Bundle\EssentialBundle\Controller\Controller;
+use Webeak\Bundle\EssentialBundle\Exception\ClientException;
+use Webeak\Bundle\EssentialBundle\HttpFoundation\XssiSafeJsonResponse;
+use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
 use Webeak\Bundle\FileBundle\FileManager;
-use Webeak\Component\Utils\ArrayUtils;
 
-class FileManagerController extends JsonController
+class FileManagerController extends Controller
 {
-    /** @var FileManager */
-    private $fileManager;
+    private FileManager $fileManager;
 
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
-
-    public function __construct(FileManager $fileManager, ErrorTrackerInterface $errorTracker)
+    public function __construct(FileManager $fileManager)
     {
         $this->fileManager = $fileManager;
-        $this->errorTracker = $errorTracker;
     }
 
     /**
-     * @Route(name="wb_file_upload", path="/file/upload", methods={"POST"})
-     *
-     * @param Request $request
-     *
-     * @return array
-     *
      * @throws
      */
-    public function upload(Request $request)
+    #[Route('/file/upload', name: 'wb_file_upload', methods: ['POST'])]
+    public function upload(Request $request): Response
     {
         $output = [];
         $files = $request->files->all();
-        if (is_array($files) && count($files) > 0) {
+        if (count($files) > 0) {
             $preset = $request->get('preset');
             $resultFiles = $this->fileManager->registerTemporarily(array_values($files), $preset);
             $this->fileManager->flush();
@@ -54,52 +40,19 @@ class FileManagerController extends JsonController
                 ]);
             }
             if (count($output) === 1 && count($output[0]['errors']) > 0) {
-                throw new BadRequestHttpException(implode(', ', $output[0]['errors']), null, 400);
+                throw new ClientException(implode(', ', $output[0]['errors']), 0, 400);
             }
         } else {
-            throw new BadRequestHttpException('No file found in the request.', null, 400);
+            throw new ClientException('No file found in the request.', 0, 400);
         }
-        return $output;
+        return new XssiSafeJsonResponse($output);
     }
 
     /**
-     * @Route(name="wb_file_upload_single", path="/file/upload-single", methods={"POST"})
-     *
-     * @param Request $request
-     *
-     * @return array|Response
-     *
      * @throws
      */
-    public function uploadSingle(Request $request)
-    {
-        $files = $request->files->all();
-        if (count($files) > 1) {
-            throw new BadRequestHttpException('More than one file has been found in the request.', null, 400);
-        }
-        $output = ArrayUtils::getValue($this->upload($request), 0);
-        if ($output === null) {
-            throw new HttpException(500, 'Unexpected upload result.');
-        }
-        if (array_key_exists('errors', $output) && count($output['errors']) > 0) {
-            return new XssiSafeJsonResponse($output, 400);
-        }
-        return $output;
-    }
-
-    /**
-     * @Route(name="wb_file_proxy", path="/file/proxy/{identifier}/{version}/{type}/{slug}", methods={"GET"})
-     *
-     * @param string $identifier
-     * @param string $version
-     * @param string $type
-     * @param string $slug
-     *
-     * @return Response
-     *
-     * @throws
-     */
-    public function proxy($identifier, $version = 'default', $type = null, $slug = null, KernelInterface $kernel)
+    #[Route('/file/proxy/{identifier}/{version}/{type}/{slug}', name: 'wb_file_proxy', methods: ['GET'])]
+    public function proxy(KernelInterface $kernel, string $identifier, string $version = 'default', ?string $type = null, ?string $slug = null): Response
     {
         try {
             $file = $this->fileManager->get($identifier);
@@ -137,28 +90,18 @@ class FileManagerController extends JsonController
                 $this->createAccessDeniedException(),
                 $kernel
             );
-        } catch (\Exception $e) {
-            // Should not happen, something went wrong.
-            $this->errorTracker->track($e, ['identifier' => $identifier, 'version' => $version]);
         }
     }
 
     /**
      * Creates a binary response in case the type is an image or throw the fallback exception.
      *
-     * @param string          $type
-     * @param string          $fallbackImageBase64
-     * @param \Exception      $fallbackExcption
-     * @param KernelInterface $kernel
-     *
-     * @return BinaryFileResponse
-     *
      * @throws
      */
     private function handleFetchErrorResponse(string $type,
                                               string $fallbackImageBase64,
                                               \Exception $fallbackExcption,
-                                              KernelInterface $kernel)
+                                              KernelInterface $kernel): Response
     {
         if ($type === 'i' || $type === 'image') {
             $response = new Response();

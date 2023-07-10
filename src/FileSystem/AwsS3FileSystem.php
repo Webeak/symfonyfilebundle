@@ -2,7 +2,8 @@
 namespace Webeak\Bundle\FileBundle\FileSystem;
 
 use Symfony\Component\Filesystem\Filesystem as SymfonyFilesystem;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
+use Webeak\Bundle\EssentialBundle\Exception\IOException;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Aws\BucketFile;
 use Webeak\Bundle\FileBundle\Aws\S3Bucket;
 use Webeak\Bundle\FileBundle\File;
@@ -17,15 +18,13 @@ class AwsS3FileSystem extends LocalFileSystem
     /** @var S3Bucket */
     private $s3Bucket;
 
-    public function __construct(ErrorTrackerInterface $errorTracker,
-                                SymfonyFilesystem $symfonyFilesystem,
+    public function __construct(SymfonyFilesystem $symfonyFilesystem,
                                 S3Bucket $s3Bucket,
                                 $rootDir,
                                 $publicRootDir)
     {
-        parent::__construct($errorTracker, $symfonyFilesystem, $rootDir, $publicRootDir);
+        parent::__construct($symfonyFilesystem, $rootDir, $publicRootDir);
         $this->symfonyFilesystem = $symfonyFilesystem;
-        $this->errorTracker = $errorTracker;
         $this->s3Bucket = $s3Bucket;
         self::$Instance = $this;
     }
@@ -40,17 +39,18 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @throws
      */
-    public function copy($source, $dest)
+    public function copy($source, $dest): File
     {
-        $source = $this->normalizePath($source);
-        $dest = $this->normalizePath($dest);
-        $sourceInstance = null;
-        if ($source instanceof File) {
-            $sourceInstance = $source;
-            $source = $source->getRealPath();
-        }
-        $this->symfonyFilesystem->copy($source, $dest);
-        return new File($dest, false, $sourceInstance);
+        throw new UsageException('Not supported');
+//        $source = $this->normalizePath($source);
+//        $dest = $this->normalizePath($dest);
+//        $sourceInstance = null;
+//        if ($source instanceof File) {
+//            $sourceInstance = $source;
+//            $source = $source->getRealPath();
+//        }
+//        $this->symfonyFilesystem->copy($source, $dest);
+//        return new File($dest, false, $sourceInstance);
     }
 
     /**
@@ -63,7 +63,7 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @throws
      */
-    public function move($source, $dest)
+    public function move($source, $dest): File
     {
         $sourceInstance = null;
         if ($source instanceof File) {
@@ -86,8 +86,10 @@ class AwsS3FileSystem extends LocalFileSystem
      * @param string|File $source
      *
      * @return mixed
+     *
+     * @throws
      */
-    public function read($source)
+    public function read($source): mixed
     {
         return $this->s3Bucket->read($source);
     }
@@ -100,14 +102,14 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @throws
      */
-    public function write($source, $content)
+    public function write($source, $content): void
     {
         if ($source instanceof File) {
             $source = $source->getRealPath();
         }
         $normalized = $this->normalizePath($source);
         if (!$normalized['s3Name']) {
-            $this->errorTracker->trackAndThrow(new \Exception(sprintf('Failed to write file "%s"', $source)), ['source' => $source]);
+            throw new IOException(sprintf('Failed to write file "%s"', $source), 0, 500, null, ['source' => $source]);
         }
         $this->s3Bucket->write($normalized['s3Name'], $content);
     }
@@ -119,7 +121,7 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @return File the temporary file object
      */
-    public function writeTemporarily($content)
+    public function writeTemporarily($content): File
     {
         $path = $this->generateTemporaryPath();
         $this->write($path, $content);
@@ -132,17 +134,20 @@ class AwsS3FileSystem extends LocalFileSystem
      * @param File|string $file
      *
      * @return boolean
+     *
+     * @throws
      */
-    public function remove($file)
+    public function remove($file): bool
     {
         if ($file instanceof File) {
             $file = $file->getRealPath();
         }
         $normalized = $this->normalizePath($file);
         if (!$normalized['s3Name']) {
-            $this->errorTracker->trackAndThrow(new \Exception(sprintf('Failed to remove file "%s"', $file)), ['file' => $file]);
+            throw new IOException(sprintf('Failed to remove file "%s"', $file), 0, 500, null, ['file' => $file]);
         }
         $this->s3Bucket->remove($normalized['s3Name']);
+        return true;
     }
 
     /**
@@ -153,7 +158,7 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @return boolean
      */
-    public function removeWithParentIfEmpty($file, $limit = 0)
+    public function removeWithParentIfEmpty($file, $limit = 0): bool
     {
         return $this->remove($file);
     }
@@ -169,7 +174,7 @@ class AwsS3FileSystem extends LocalFileSystem
      *
      * @return File
      */
-    public function persist(File $file)
+    public function persist(File $file): File
     {
         if (!$this->isTemporary($file)) {
             return $file;
@@ -197,8 +202,8 @@ class AwsS3FileSystem extends LocalFileSystem
      */
     public function normalizePath(string $path): array
     {
-        if (substr($path, 0, strlen($this->rootDir)) === $this->rootDir) {
-            $type = substr($path, 0, strlen($this->tempDir)) === $this->tempDir ? 'temp' : 'storage';
+        if (str_starts_with($path, $this->rootDir)) {
+            $type = str_starts_with($path, $this->tempDir) ? 'temp' : 'storage';
             $s3Name = str_replace('/', '_', substr($path, strlen($this->rootDir) + 1));
         } else {
             $type = 'external';

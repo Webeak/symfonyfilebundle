@@ -4,9 +4,7 @@ namespace Webeak\Bundle\FileBundle;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
-use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Webeak\Component\Utils\UtilPhp;
@@ -16,71 +14,55 @@ use Webeak\Component\Utils\UtilPhp;
  */
 class ManagedFile
 {
-    /** @var ErrorTrackerInterface */
-    protected $errorTracker;
 
     /** @var FileSystemInterface */
-    protected $filesystem;
+    protected FileSystemInterface $filesystem;
 
     /** @var RouterInterface */
-    protected $router;
+    protected RouterInterface $router;
 
     /**
      * Unique identifier of the file and all its versions.
      * This is the identifier the app will always refer to.
-     *
-     * @var string
      */
-    protected $identifier;
+    protected string $identifier;
 
     /**
      * Associative array of versionName => File instance.
      *
-     * @var File
+     * @var File[]
      */
-    protected $versions;
+    protected array $versions;
 
     /**
      * Array of removed versions.
-     *
-     * @var array
      */
-    protected $removedVersions;
+    protected array $removedVersions;
 
     /** @var Configuration */
-    protected $configuration;
+    protected ?Configuration $configuration;
 
     /** @var string[] */
-    protected $errors;
+    protected array $errors;
 
     /** @var integer  */
-    private $usageCount;
+    private int $usageCount;
 
     /** @var string */
-    private $publicRootDir;
+    private string $publicRootDir;
 
     /** @var string */
-    private $httpRoot;
+    private string $httpRoot;
 
     /**
-     * Create a ManagedFile instance.
-     *
-     * @param RequestStack          $requestStack,
-     * @param ErrorTrackerInterface $errorTracker
-     * @param FileSystemInterface   $filesystem
-     * @param RouterInterface       $router
-     * @param string                $projectRootDir
-     *
      * @throws
      */
     public function __construct(RequestStack $requestStack,
-                                ErrorTrackerInterface $errorTracker,
                                 FileSystemInterface $filesystem,
                                 RouterInterface $router,
                                 string $projectRootDir)
     {
         $currentRequest = $requestStack->getCurrentRequest();
-        $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
         $this->router = $router;
         $this->publicRootDir = $projectRootDir . '/public';
@@ -91,20 +73,14 @@ class ManagedFile
         $this->configuration = null;
         $this->usageCount = 0;
         if (!$this->publicRootDir) {
-            $this->errorTracker->trackAndThrow(new InvalidArgumentException('Invalid web root dir.'));
+            throw new UsageException('Invalid web root dir.');
         }
     }
 
     /**
      * Add a new version of this file.
-     *
-     * @param File    $version
-     * @param string  $name     (optional, default: 'default')
-     * @param boolean $override (optional, default: true) true to override if the name already exists
-     *
-     * @return $this
      */
-    public function addVersion(File $version, $name = 'default', $override = true)
+    public function addVersion(File $version, string $name = 'default', bool $override = true): static
     {
         if (!array_key_exists($name, $this->versions) || $override) {
             $version->setVersionName($name);
@@ -115,12 +91,8 @@ class ManagedFile
 
     /**
      * Test if a version of the file exist.
-     *
-     * @param string $version
-     *
-     * @return boolean
      */
-    public function hasVersion($version)
+    public function hasVersion(string $version): bool
     {
         return array_key_exists($version, $this->versions);
     }
@@ -128,29 +100,23 @@ class ManagedFile
     /**
      * Get the File instance of a version.
      *
-     * @param string $name version's name
-     *
-     * @return File|void
-     *
      * @throws
      */
-    public function getVersion($name)
+    public function getVersion(string $name): File
     {
         if (array_key_exists($name, $this->versions)) {
             return $this->versions[$name];
         }
-        $this->errorTracker->trackAndThrow(new FileNotFoundException(sprintf(
+        throw new FileNotFoundException(sprintf(
             'No "%s" version has been found for the file "%s".',
             $name, $this->getIdentifier()
-        )));
+        ));
     }
 
     /**
      * Remove a version of a file.
-     *
-     * @param string $name
      */
-    public function removeVersion($name)
+    public function removeVersion(string $name): void
     {
         if (array_key_exists($name, $this->versions) && !in_array($name, $this->removedVersions)) {
             $this->removedVersions[$name] = $this->versions[$name];
@@ -160,18 +126,14 @@ class ManagedFile
 
     /**
      * Get the array of File waiting to be removed.
-     *
-     * @return array
      */
-    public function getRemovedVersions()
+    public function getRemovedVersions(): array
     {
         return $this->removedVersions;
     }
 
     /**
      * Test if the file has expired.
-     *
-     * @return boolean
      */
     public function hasExpired(): bool
     {
@@ -179,7 +141,7 @@ class ManagedFile
         if ($expirationDate instanceof \DateTime) {
             try {
                 return new \DateTime() >= $expirationDate;
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Makes no sense that new \DateTime() throw an exception in this case but the try/catch is
                 // here to remove ide warning because there is no @throws annotation on the comments.
                 return true;
@@ -190,12 +152,8 @@ class ManagedFile
 
     /**
      * Add an error message or an array of messages to the global errors array.
-     *
-     * @param string|array $errors
-     *
-     * @return $this
      */
-    public function addErrors($errors)
+    public function addErrors(array|string $errors): static
     {
         if (!is_array($errors)) {
             $errors = [$errors];
@@ -206,10 +164,8 @@ class ManagedFile
 
     /**
      * Test if any version of the files have an error.
-     *
-     * @return boolean
      */
-    public function hasError()
+    public function hasError(): bool
     {
         if (count($this->errors) > 0) {
             return true;
@@ -225,10 +181,8 @@ class ManagedFile
     /**
      * Get an associative array where the key is the version name
      * and the value is an array of error messages.
-     *
-     * @return array
      */
-    public function getErrors()
+    public function getErrors(): array
     {
         $output = ['_global' => $this->errors];
         foreach ($this->versions as $name => $version) {
@@ -240,10 +194,8 @@ class ManagedFile
     /**
      * Get a flattened array of errors where errors of all versions
      * are concatenated in a single array.
-     *
-     * @return string[]
      */
-    public function getFlattenedErrors()
+    public function getFlattenedErrors(): array
     {
         $output = $this->errors;
         foreach ($this->versions as $name => $version) {
@@ -254,33 +206,24 @@ class ManagedFile
 
     /**
      * Get the whole list of versions for this file.
-     *
-     * @return array
      */
-    public function getVersions()
+    public function getVersions(): array
     {
         return $this->versions;
     }
 
     /**
      * Get the list of versions names.
-     *
-     * @return array
      */
-    public function getVersionsNames()
+    public function getVersionsNames(): array
     {
         return array_keys($this->versions);
     }
 
     /**
      * Set a version file.
-     *
-     * @param string $name
-     * @param File   $version
-     *
-     * @return $this
      */
-    public function setVersion($name, File $version)
+    public function setVersion(string $name, File $version): static
     {
         $this->versions[$name] = $version;
         return $this;
@@ -289,13 +232,9 @@ class ManagedFile
     /**
      * Get the content of the file.
      *
-     * @param string $version (optional)
-     *
-     * @return mixed
-     *
      * @throws
      */
-    public function getContent($version = null)
+    public function getContent(?string $version = null): mixed
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -306,12 +245,9 @@ class ManagedFile
     /**
      * Get the content of a file.
      *
-     * @param mixed  $content content of the file
-     * @param string $version (optional)
-     *
      * @throws
      */
-    public function setContent($content, $version = null)
+    public function setContent(mixed $content, ?string $version = null): void
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -321,10 +257,8 @@ class ManagedFile
 
     /**
      * Get the unique identifier of the file.
-     *
-     * @return string
      */
-    public function getIdentifier()
+    public function getIdentifier(): string
     {
         return $this->identifier;
     }
@@ -335,13 +269,9 @@ class ManagedFile
      *
      * NEVER use this to remove a file, as it will still exist in the file manager database.
      *
-     * @param string $version
-     *
-     * @return string
-     *
      * @throws
      */
-    public function getLocalPath($version = null)
+    public function getLocalPath(?string $version = null): string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -359,13 +289,9 @@ class ManagedFile
      * If access rights have been added to the file, then the HTTP path will lead to
      * a proxy action where the user asking to view the file will be checked.
      *
-     * @param string $version
-     *
-     * @return string
-     *
      * @throws
      */
-    public function getPublicPath($version = null)
+    public function getPublicPath(?string $version = null): string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -386,17 +312,13 @@ class ManagedFile
             'version' => $version,
             'type' => $file->isImage() ? 'i' : 'g',
             'slug' => UtilPhp::slugify($realFileName) . $realFileExtension
-        ], RouterInterface::ABSOLUTE_PATH);
+        ]);
     }
 
     /**
      * Set the identifier.
-     *
-     * @param string $identifier
-     *
-     * @return $this
      */
-    public function setIdentifier($identifier)
+    public function setIdentifier(string $identifier): static
     {
         $this->identifier = $identifier;
         return $this;
@@ -404,12 +326,8 @@ class ManagedFile
 
     /**
      * Set the usage count.
-     *
-     * @param integer $count
-     *
-     * @return ManagedFile
      */
-    public function setUsageCount($count)
+    public function setUsageCount(int $count): static
     {
         $this->usageCount = max(0, intval($count));
         return $this;
@@ -417,22 +335,16 @@ class ManagedFile
 
     /**
      * Get the usage count.
-     *
-     * @return integer
      */
-    public function getUsageCount()
+    public function getUsageCount(): int
     {
         return $this->usageCount;
     }
 
     /**
      * Increment the usage count.
-     *
-     * @param integer $count
-     *
-     * @return ManagedFile
      */
-    public function incrementUsageCount($count = 1)
+    public function incrementUsageCount(int $count = 1): static
     {
         $this->usageCount += max(0, intval($count));
         return $this;
@@ -440,12 +352,8 @@ class ManagedFile
 
     /**
      * Decrement the usage count.
-     *
-     * @param integer $count
-     *
-     * @return ManagedFile
      */
-    public function decrementUsageCount($count = 1)
+    public function decrementUsageCount(int $count = 1): static
     {
         $this->usageCount -= max(0, intval($count));
         return $this;
@@ -454,12 +362,10 @@ class ManagedFile
     /**
      * Test if the managed file contains valid versions pointing on existing files.
      * If any version is invalid, the whole file is considered invalid.
-     *
-     * @return boolean
      */
-    public function isValid()
+    public function isValid(): bool
     {
-        if (!is_array($this->versions) || !count($this->versions)) {
+        if (!count($this->versions)) {
             return false;
         }
         foreach ($this->versions as $name => $version) {
@@ -472,12 +378,8 @@ class ManagedFile
 
     /**
      * Set extra data to attach to the file.
-     *
-     * @param mixed  $extra
-     *
-     * @return $this
      */
-    public function setExtra($extra)
+    public function setExtra(array $extra): static
     {
         $this->configuration->setExtra($extra);
         return $this;
@@ -485,10 +387,8 @@ class ManagedFile
 
     /**
      * Get extra data associated with the file.
-     *
-     * @return array
      */
-    public function getExtra()
+    public function getExtra(): array
     {
         return $this->configuration->getExtra();
     }
@@ -496,12 +396,8 @@ class ManagedFile
     /**
      * Set public extra data to attach to the file.
      * These extra WILL BE available in the PublicFile object.
-     *
-     * @param mixed  $extra
-     *
-     * @return $this
      */
-    public function setPublicExtra($extra)
+    public function setPublicExtra(array $extra): static
     {
         $this->configuration->setPublicExtra($extra);
         return $this;
@@ -510,32 +406,24 @@ class ManagedFile
     /**
      * Get extra data associated with the file.
      * These extra WILL BE available in the PublicFile object.
-     *
-     * @return array
      */
-    public function getPublicExtra()
+    public function getPublicExtra(): array
     {
         return $this->configuration->getPublicExtra();
     }
 
     /**
      * Gets the expiration date of the file.
-     *
-     * @return \DateTime|null
      */
-    public function getExpirationDate()
+    public function getExpirationDate(): ?\DateTimeInterface
     {
         return $this->configuration->getExpirationDate();
     }
 
     /**
      * Set the configuration associated with the file.
-     *
-     * @param Configuration $configuration
-     *
-     * @return $this
      */
-    public function setConfiguration(Configuration $configuration)
+    public function setConfiguration(Configuration $configuration): static
     {
         $this->configuration = $configuration;
         return $this;
@@ -543,18 +431,14 @@ class ManagedFile
 
     /**
      * Get the configuration associated with the file.
-     *
-     * @return Configuration|null
      */
-    public function getConfiguration()
+    public function getConfiguration(): ?Configuration
     {
         return $this->configuration;
     }
 
     /**
      * Test if the file has any kind of limitation over its access.
-     *
-     * @return boolean
      */
     public function hasAccessLimitations(): bool
     {
@@ -572,14 +456,10 @@ class ManagedFile
      *
      * You can call specific methods like "isBlacklisted()" if you need to test for a specific kind of
      * access control but most of the time you should use this method.
-     *
-     * @param string|UserInterface $user
-     *
-     * @return boolean
      */
-    public function hasAccess($user): bool
+    public function hasAccess(UserInterface|string $user): bool
     {
-        $username = $user instanceof UserInterface ? $user->getUsername() : ((string)$user);
+        $username = $user instanceof UserInterface ? $user->getUserIdentifier() : ((string)$user);
         $roles = $user instanceof UserInterface ? $user->getRoles() : [];
         if ($this->isBlacklisted($username)) {
             return false;
@@ -597,10 +477,6 @@ class ManagedFile
      *
      * This method ONLY test the whitelist, please use "hasAccess()" if you need to test if
      * a user can access the file at all.
-     *
-     * @param string $username
-     *
-     * @return boolean
      */
     public function isWhitelisted(string $username): bool
     {
@@ -614,10 +490,6 @@ class ManagedFile
      *
      * This method ONLY test the blacklist, please use "hasAccess()" if you need to test if
      * a user can access the file at all.
-     *
-     * @param string $username
-     *
-     * @return boolean
      */
     public function isBlacklisted(string $username): bool
     {
@@ -629,10 +501,6 @@ class ManagedFile
      *
      * This method ONLY test for roles, please use "hasAccess()" if you need to test if
      * a user can access the file at all.
-     *
-     * @param array $userRoles
-     *
-     * @return boolean
      */
     public function hasRequiredRoles(array $userRoles): bool
     {
@@ -647,11 +515,9 @@ class ManagedFile
     /**
      * Get a PublicFile instance for the file.
      *
-     * @return PublicFile|null
-     *
      * @throws
      */
-    public function getPublicFile()
+    public function getPublicFile(): ?PublicFile
     {
         if ($this->hasError()) {
             return null;
@@ -685,13 +551,9 @@ class ManagedFile
      * This method uses the mime type as guessed by getMimeType()
      * to guess the file extension.
      *
-     * @param string $version
-     *
-     * @return string|null The guessed extension or null if it cannot be guessed
-     *
      * @throws
      */
-    public function guessExtension($version = null)
+    public function guessExtension(?string $version = null): ?string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -706,13 +568,9 @@ class ManagedFile
      * mime_content_type() and the system binary "file" (in this order), depending on
      * which of those are available.
      *
-     * @param string $version
-     *
-     * @return string|null The guessed mime type (e.g. "application/pdf")
-     *
      * @throws
      */
-    public function getMimeType($version = null)
+    public function getMimeType(?string $version = null): ?string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -721,11 +579,9 @@ class ManagedFile
     }
 
     /**
-     * Get an md5 of the md5 of each files versions.
-     *
-     * @return string
+     * Get a md5 of the md5 of each file's versions.
      */
-    public function getSourceFilesHash()
+    public function getSourceFilesHash(): string
     {
         $hashes = '';
         $keys = array_keys($this->versions);
@@ -746,10 +602,8 @@ class ManagedFile
      * The hash includes :
      *   - hashes from the content of the source files
      *   - the current configuration
-     *
-     * @return string
      */
-    public function getHash()
+    public function getHash(): string
     {
         $exported = $this->configuration->exportGenericRepresentation();
         // The expiration date will change for every file so ignore it.
@@ -765,15 +619,13 @@ class ManagedFile
     /**
      * Gets the filename
      *
-     * @param string $version
+     * @throws
      *
-     * @link http://php.net/manual/en/splfileinfo.getfilename.php
-     * @return string The filename.
      * @since 5.1.2
      *
-     * @throws
+     * @link http://php.net/manual/en/splfileinfo.getfilename.php
      */
-    public function getFilename($version = null)
+    public function getFilename(?string $version = null): string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -784,16 +636,15 @@ class ManagedFile
     /**
      * Gets the file extension
      *
-     * @param string $version
-     *
-     * @link http://php.net/manual/en/splfileinfo.getextension.php
-     * @return string a string containing the file extension, or an
-     * empty string if the file has no extension.
-     * @since 5.3.6
+     * @return string a string containing the file extension, or an empty string if the file has no extension.
      *
      * @throws
+     *
+     * @since 5.3.6
+     *
+     * @link http://php.net/manual/en/splfileinfo.getextension.php
      */
-    public function getExtension($version = null)
+    public function getExtension(?string $version = null): string
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -808,15 +659,15 @@ class ManagedFile
     /**
      * Gets file size
      *
-     * @param string $version
-     *
-     * @link http://php.net/manual/en/splfileinfo.getsize.php
      * @return int The filesize in bytes.
-     * @since 5.1.2
      *
      * @throws
+     *
+     * @since 5.1.2
+     *
+     * @link http://php.net/manual/en/splfileinfo.getsize.php
      */
-    public function getSize($version = null)
+    public function getSize(?string $version = null): int
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -827,15 +678,15 @@ class ManagedFile
     /**
      * Gets last access time of the file
      *
-     * @param string $version
-     *
-     * @link http://php.net/manual/en/splfileinfo.getatime.php
      * @return int the time the file was last accessed.
-     * @since 5.1.2
      *
      * @throws
+     *
+     * @since 5.1.2
+     *
+     * @link http://php.net/manual/en/splfileinfo.getatime.php
      */
-    public function getATime($version = null)
+    public function getATime(?string $version = null): int
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -846,15 +697,15 @@ class ManagedFile
     /**
      * Gets the last modified time
      *
-     * @param string $version
-     *
-     * @link http://php.net/manual/en/splfileinfo.getmtime.php
      * @return int the last modified time for the file, in a Unix timestamp.
-     * @since 5.1.2
      *
      * @throws
+     *
+     * @since 5.1.2
+     *
+     * @link http://php.net/manual/en/splfileinfo.getmtime.php
      */
-    public function getMTime($version = null)
+    public function getMTime(?string $version = null): int
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -865,15 +716,15 @@ class ManagedFile
     /**
      * Gets the inode change time
      *
-     * @param string $version
-     *
-     * @link http://php.net/manual/en/splfileinfo.getctime.php
      * @return int The last change time, in a Unix timestamp.
-     * @since 5.1.2
      *
      * @throws
+     *
+     * @since 5.1.2
+     *
+     * @link http://php.net/manual/en/splfileinfo.getctime.php
      */
-    public function getCTime($version = null)
+    public function getCTime(string $version = null): int
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
@@ -884,14 +735,12 @@ class ManagedFile
     /**
      * Get the name of the default version.
      *
-     * @return string
-     *
      * @throws
      */
     private function getDefaultVersionName(): string
     {
         if (!count($this->versions)) {
-            throw new RuntimeException('This file has no version.');
+            throw new UsageException('This file has no version.');
         }
         if (array_key_exists('default', $this->versions)) {
             return 'default';

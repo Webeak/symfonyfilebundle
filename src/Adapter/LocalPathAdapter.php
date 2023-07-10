@@ -1,7 +1,6 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\FileBundle\File;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 
@@ -10,40 +9,25 @@ use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
  */
 class LocalPathAdapter implements AdapterInterface
 {
-    /** @var FileSystemInterface */
-    private $filesystem;
-
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
-
-    public function __construct(FileSystemInterface $fileSystem, ErrorTrackerInterface $errorTracker)
+    public function __construct(private readonly FileSystemInterface $fileSystem)
     {
-        $this->filesystem = $fileSystem;
-        $this->errorTracker = $errorTracker;
+
     }
 
     /**
      * Test if the adapter supports the input.
-     *
-     * @param mixed $input
-     *
-     * @return boolean
      */
-    public function supports($input)
+    public function supports(mixed $input): bool
     {
         return is_string($input) && parse_url($input, PHP_URL_HOST) === null && file_exists($input);
     }
 
     /**
      * Normalize the input value into a (symfony) File instance.
-     *
-     * @param mixed $input
-     *
-     * @return File
      */
-    public function normalize($input)
+    public function normalize(mixed $input): File
     {
-        $file = $this->filesystem->copy($input, $this->filesystem->generateTemporaryPath());
+        $file = $this->fileSystem->copy($input, $this->fileSystem->generateTemporaryPath());
         $file->setVirtualName(substr($input, intval(strrpos(str_replace('\\', '/', $input), '/')) + 1));
         return $file;
     }

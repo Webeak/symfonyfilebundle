@@ -1,9 +1,8 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Storage;
 
-use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
-use Webeak\Bundle\FileBundle\ManagedFile;
 use Symfony\Component\Console\Output\OutputInterface;
+use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
 
 /**
@@ -53,8 +52,6 @@ interface StorageInterface
     /**
      * Process all scheduled operations.
      *
-     * @return mixed
-     *
      * @throws
      */
     public function flush();
@@ -63,10 +60,11 @@ interface StorageInterface
      * Remove a file.
      *
      * @param ManagedFile|PublicFile|string $file file instance or identifier
+     * @param boolean $force if `true`, ignore the usage count
      *
      * @throws
      */
-    public function remove($file);
+    public function remove($file, bool $force = false);
 
     /**
      * Remove a version of a file.
@@ -86,4 +84,9 @@ interface StorageInterface
      * @throws
      */
     public function removeExpirationDate($file);
+
+    /**
+     * List files matching certain criteria.
+     */
+    public function find(int $offset, array $filters = [], int $maxResults = 20): array;
 }

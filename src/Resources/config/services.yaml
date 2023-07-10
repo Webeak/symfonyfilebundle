@@ -25,7 +25,6 @@ services:
         arguments:
             - '@service_container'
             - '@validator'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\DoctrineExtensionsBundle\Utils\UniqueIdGenerator'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
@@ -39,7 +38,6 @@ services:
         shared: false
         arguments:
             - '@service_container'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%wb.file.configuration_presets%'
             - '%wb.file.constraints_aliases%'
             - '%wb.file.processors_aliases%'
@@ -49,7 +47,6 @@ services:
         shared: false
         arguments:
             - '@request_stack'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@router'
             - '%kernel.project_dir%'
@@ -63,7 +60,6 @@ services:
 
     Webeak\Bundle\FileBundle\Adapter\UploadedFileAdapter:
         arguments:
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
@@ -71,14 +67,12 @@ services:
     Webeak\Bundle\FileBundle\Adapter\HttpPathAdapter:
         arguments:
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\LocalPathAdapter:
         arguments:
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
@@ -102,10 +96,10 @@ services:
         arguments:
             - '@service_container'
             - '@kernel'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
+            - '@Psr\Log\LoggerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         calls:
-            - [setSharedStorage, ['@?Webeak\Bundle\SharedStorageBundle\SharedStorageInterface']]
+            - [setSharedStorage, ['@Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface']]
         tags:
             - { name: wb.file.file_manager_storage, alias: filesystem }
 
@@ -113,7 +107,6 @@ services:
         arguments:
             - '@service_container'
             - '@doctrine'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '%wb.file.doctrine_storage%'
         tags:
@@ -127,7 +120,6 @@ services:
     Webeak\Bundle\FileBundle\FileSystem\LocalFileSystem:
         public: true
         arguments:
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@filesystem'
             - '%wb.file.save_path%'
             - '%wb.file.public_save_path%'
@@ -137,7 +129,6 @@ services:
     Webeak\Bundle\FileBundle\FileSystem\AwsS3FileSystem:
         public: true
         arguments:
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '@filesystem'
             - '@Webeak\Bundle\FileBundle\Aws\S3Bucket'
             - '%wb.file.save_path%'
@@ -152,7 +143,6 @@ services:
         public: false
         arguments:
             - '@Webeak\Bundle\FileBundle\FileManager'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
@@ -160,7 +150,6 @@ services:
         public: false
         arguments:
             - '@Webeak\Bundle\FileBundle\FileManager'
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%kernel.environment%'
         tags: [ { name: serializer.normalizer } ]
 
@@ -169,7 +158,7 @@ services:
     #
     Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\EventListener\EntityListener:
         public: false
-        arguments: ['@Webeak\Bundle\FileBundle\FileManager', '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface']
+        arguments: ['@Webeak\Bundle\FileBundle\FileManager']
         tags:
             - { name: wb.doctrine_extensions.listener, event: postLoad, method: postLoad, priority: 1 }
             - { name: wb.doctrine_extensions.listener, event: onFlush, method: onFlush, priority: 1000 }
@@ -195,5 +184,4 @@ services:
     Webeak\Bundle\FileBundle\Aws\S3Bucket:
         public: true
         arguments:
-            - '@Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface'
             - '%wb.file.aws_s3_storage%'

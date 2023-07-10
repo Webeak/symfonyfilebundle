@@ -15,15 +15,23 @@ class FileType extends Type
     /**
      * {@inheritdoc}
      */
-    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
+    public function requiresSQLCommentHint(AbstractPlatform $platform): bool
     {
-        return $platform->getBlobTypeDeclarationSQL($fieldDeclaration);
+        return true;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function convertToDatabaseValue($value, AbstractPlatform $platform)
+    public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
+    {
+        return $platform->getBlobTypeDeclarationSQL($column);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function convertToDatabaseValue($value, AbstractPlatform $platform): mixed
     {
         if (!$value) {
             return null;
@@ -37,7 +45,7 @@ class FileType extends Type
     /**
      * {@inheritdoc}
      */
-    public function convertToPHPValue($value, AbstractPlatform $platform)
+    public function convertToPHPValue($value, AbstractPlatform $platform): mixed
     {
         if (!$value) {
             return null;
@@ -45,7 +53,7 @@ class FileType extends Type
         return unserialize($value);
     }
 
-    public function getName()
+    public function getName(): string
     {
         return self::TYPE_NAME;
     }

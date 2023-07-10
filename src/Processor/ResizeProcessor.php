@@ -13,42 +13,30 @@ class ResizeProcessor extends AbstractProcessor
 {
     /**
      * Target width to resize to.
-     *
-     * @var integer
      */
-    public $width;
+    public int $width;
 
     /**
      * Target height to resize to.
-     *
-     * @var integer
      */
-    public $height;
+    public int $height;
 
     /**
      * Background color if the image is too small
      * to fit the entire area after resize.
-     *
-     * @var string
      */
-    public $background;
+    public string $background;
 
     /**
      * Mode of resizing.
      * Can be: 'default', 'scale', 'stretch', 'crop', 'zoomCrop'
      *
      * @see https://github.com/Gregwar/Image#basic-handling
-     *
-     * @var string
      */
-    public $mode;
+    public string $mode;
 
-    /** @var ImageHandling */
-    private $handler;
-
-    public function __construct(ImageHandling $handler)
+    public function __construct(private readonly ImageHandling $handler)
     {
-        $this->handler = $handler;
         $this->background = 'transparent';
         $this->mode = 'crop';
     }
@@ -61,7 +49,7 @@ class ResizeProcessor extends AbstractProcessor
      *
      * @return boolean
      */
-    public function supports(File $file, ManagedFile $parent)
+    public function supports(File $file, ManagedFile $parent): bool
     {
         return substr((string)$file->getMimeType(), 0, 6) === 'image/';
     }
@@ -74,7 +62,7 @@ class ResizeProcessor extends AbstractProcessor
      *
      * @return File
      */
-    public function process(File $file, ManagedFile $parent)
+    public function process(File $file, ManagedFile $parent): File
     {
         $imageHandler = $this->handler->open($file->getRealPath());
 

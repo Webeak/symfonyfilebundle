@@ -4,6 +4,8 @@ namespace Webeak\Bundle\FileBundle\DependencyInjection\Compiler;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
+use Webeak\Bundle\FileBundle\FileManager;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 
 class RegisterFileSystemPass implements CompilerPassInterface
@@ -11,9 +13,9 @@ class RegisterFileSystemPass implements CompilerPassInterface
     /**
      * @inheritDoc
      */
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
-        if ($container->hasDefinition('Webeak\Bundle\FileBundle\FileManager') === false) {
+        if ($container->hasDefinition(FileManager::class) === false) {
             return ;
         }
         $map = [];
@@ -24,11 +26,11 @@ class RegisterFileSystemPass implements CompilerPassInterface
                     continue 2;
                 }
             }
-            throw new \Exception(sprintf('Missing alias for filesystem adapter "%s".', $id));
+            throw new UsageException(sprintf('Missing alias for filesystem adapter "%s".', $id));
         }
         $currentAdapter = $container->getParameter('wb.file.filesystem_type');
         if (!array_key_exists($currentAdapter, $map)) {
-            throw new \Exception(sprintf('No filesystem adapter "%s" has been found.', $currentAdapter));
+            throw new UsageException(sprintf('No filesystem adapter "%s" has been found.', $currentAdapter));
         }
         $definition = $container->getDefinition($map[$currentAdapter]);
         $container->setDefinition(FileSystemInterface::class, $definition);

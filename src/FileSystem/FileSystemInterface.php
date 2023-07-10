@@ -19,7 +19,7 @@ interface FileSystemInterface
      *
      * @throws
      */
-    public function copy($source, $dest);
+    public function copy($source, $dest): File;
 
     /**
      * Move a file.
@@ -31,7 +31,7 @@ interface FileSystemInterface
      *
      * @throws
      */
-    public function move($source, $dest);
+    public function move($source, $dest): File;
 
     /**
      * Get the content of the file.
@@ -40,7 +40,7 @@ interface FileSystemInterface
      *
      * @return mixed
      */
-    public function read($source);
+    public function read($source): mixed;
 
     /**
      * Set the content of the file.

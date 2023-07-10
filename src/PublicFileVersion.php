@@ -8,33 +8,25 @@ class PublicFileVersion
 {
     /**
      * URL to access the file by HTTP.
-     *
-     * @var string
      */
-    public $url;
+    public string $url;
 
     /**
      * Real name of the file.
-     *
-     * @var string
      */
-    public $name;
+    public string $name;
 
     /**
      * Size of the file (in bytes).
-     *
-     * @var integer
      */
-    public $size;
+    public int $size;
 
     /**
      * Mime type of the file.
-     *
-     * @var string
      */
-    public $type;
+    public string $type;
 
-    public function exportGenericRepresentation()
+    public function exportGenericRepresentation(): array
     {
         return [
             'url' => $this->url,
@@ -44,7 +36,7 @@ class PublicFileVersion
         ];
     }
 
-    public function importGenericRepresentation(array $data)
+    public function importGenericRepresentation(array $data): void
     {
         $this->url = $data['url'];
         $this->name = $data['name'];
@@ -52,7 +44,7 @@ class PublicFileVersion
         $this->type = $data['type'];
     }
 
-    public static function createFromGenericRepresentation(array $data)
+    public static function createFromGenericRepresentation(array $data): PublicFileVersion
     {
         $instance = new self;
         $instance->importGenericRepresentation($data);

@@ -1,12 +1,12 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Storage;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
-use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
+use Webeak\Bundle\EssentialBundle\SharedStorage\LockInterface;
+use Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface;
 use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Configuration;
@@ -16,8 +16,6 @@ use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Bundle\FileBundle\PublicFile;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Webeak\Bundle\SharedStorageBundle\LockInterface;
-use Webeak\Bundle\SharedStorageBundle\SharedStorageInterface;
 use Webeak\Component\Utils\ArrayUtils;
 
 /**
@@ -30,52 +28,52 @@ class FileSystemStorage implements StorageInterface
     private const EXPIRATION_DATES_STORAGE_KEY = 'file-bundle:expiring_files';
 
     /** @var ContainerInterface */
-    private $container;
+    private ContainerInterface $container;
 
     /** @var SharedStorageInterface */
-    private $sharedStorage;
-
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
+    private SharedStorageInterface $sharedStorage;
 
     /** @var FileSystemInterface */
-    private $filesystem;
+    private FileSystemInterface $filesystem;
+
+    /** @var LoggerInterface */
+    private LoggerInterface $logger;
 
     /** @var FileEntityInterface[] */
-    private $knownEntities;
+    private array $knownEntities;
 
     /** @var array */
-    private $knownManagedFiles;
+    private array $knownManagedFiles;
 
     /** @var ManagedFile[] */
-    private $waitingForPersist;
+    private array $waitingForPersist;
 
     /** @var ManagedFile[] */
-    private $waitingForRemove;
+    private array $waitingForRemove;
 
     /** @var array */
-    private $waitingForFlush;
+    private array $waitingForFlush;
 
     /** @var array */
-    private $expiringFiles;
+    private ?array $expiringFiles;
 
     /** @var LockInterface */
-    private $expiringFilesLock;
+    private ?LockInterface $expiringFilesLock;
 
     /** @var string */
-    private $metadataRootDir;
+    private string $metadataRootDir;
 
     /** @var boolean */
-    private $changed;
+    private bool $changed;
 
     public function __construct(ContainerInterface $container,
                                 KernelInterface $kernel,
-                                ErrorTrackerInterface $errorTracker,
+                                LoggerInterface $logger,
                                 FileSystemInterface $filesystem)
     {
         $this->container = $container;
-        $this->errorTracker = $errorTracker;
         $this->filesystem = $filesystem;
+        $this->logger = $logger;
         $this->knownEntities = [];
         $this->knownManagedFiles = ['id' => [], 'hash' => []];
         $this->waitingForPersist = [];
@@ -83,7 +81,6 @@ class FileSystemStorage implements StorageInterface
         $this->waitingForFlush = [];
         $this->expiringFiles = null;
         $this->expiringFilesLock = null;
-        $this->sharedStorage = null;
         $this->changed = false;
         $this->metadataRootDir = $kernel->getProjectDir() . '/var/storage/wb-files/metadata';
     }
@@ -91,10 +88,8 @@ class FileSystemStorage implements StorageInterface
     /**
      * Shared storage is optional.
      * The container will set it through this method if available.
-     *
-     * @param SharedStorageInterface $sharedStorage
      */
-    public function setSharedStorage(SharedStorageInterface $sharedStorage)
+    public function setSharedStorage(SharedStorageInterface $sharedStorage): void
     {
         $this->sharedStorage = $sharedStorage;
     }
@@ -102,7 +97,7 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function load(string $identifier)
+    public function load(string $identifier): mixed
     {
         if (array_key_exists($identifier, $this->knownManagedFiles['id'])) {
             return $this->knownManagedFiles['id'][$identifier];
@@ -119,8 +114,9 @@ class FileSystemStorage implements StorageInterface
                 }
             }
         }
-        $this->errorTracker->trackAndThrow(new FileNotFoundException(
-            sprintf('No file id "%s" has been found. It may have been removed.', $identifier)
+        throw new FileNotFoundException(sprintf(
+            'No file id "%s" has been found. It may have been removed.',
+            $identifier
         ));
     }
 
@@ -154,11 +150,11 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function persist(ManagedFile $file)
+    public function persist(ManagedFile $file): ManagedFile
     {
         $identifier = $file->getIdentifier();
         if (strlen($identifier) < 4) {
-            $this->errorTracker->trackAndThrow(new InvalidArgumentException('Invalid file identifier. Identifiers must be at least 4 characters long.'));
+            throw new UsageException('Invalid file identifier. Identifiers must be at least 4 characters long.');
         }
         $this->waitingForFlush[$identifier] = [
             'path' => $this->getMetadataPathForIdentifier($identifier),
@@ -172,7 +168,7 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function remove($file)
+    public function remove($file, bool $force = false): void
     {
         try {
             $file = $this->ensureManagedFile($file);
@@ -183,7 +179,7 @@ class FileSystemStorage implements StorageInterface
         $identifier = $file->getIdentifier();
         if (array_key_exists($identifier, $this->knownManagedFiles['id'])) {
             $file->decrementUsageCount();
-            if ($file->getUsageCount() <= 0) {
+            if ($file->getUsageCount() <= 0 || $force) {
                 $this->waitingForRemove[] = $file;
 
                 // Ensure the file have not been persisted before, we want to remove it now.
@@ -203,7 +199,7 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function removeVersion($file, $version)
+    public function removeVersion($file, $version): void
     {
         $file = $this->ensureManagedFile($file);
         $version = is_array($version) ? $version : [$version];
@@ -219,7 +215,7 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function removeExpirationDate($file)
+    public function removeExpirationDate($file): void
     {
         $file = $this->ensureManagedFile($file);
         $file->getConfiguration()->setExpirationDate(null);
@@ -230,7 +226,7 @@ class FileSystemStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function flush()
+    public function flush(): void
     {
         if (!$this->changed) {
             return ;
@@ -298,7 +294,7 @@ class FileSystemStorage implements StorageInterface
                 $this->knownManagedFiles['hash'][$file->getHash()] = $file;
             }
             if (count($writesFailed) > 0) {
-                $this->errorTracker->track(new IOException('Failed to write metadata files.'), ['paths' => $writesFailed]);
+                throw new IOException('Failed to write metadata files.', 0, 500, null, ['paths' => $writesFailed]);
             }
         }
         if (count($waitingForRemove) > 0) {
@@ -331,10 +327,8 @@ class FileSystemStorage implements StorageInterface
 
     /**
      * Check if the file in parameter is already known with a different hash and remove the hash file if so.
-     *
-     * @param ManagedFile $file
      */
-    private function removeOldHashMetadata(ManagedFile $file)
+    private function removeOldHashMetadata(ManagedFile $file): void
     {
         $identifier = $file->getIdentifier();
         if (!array_key_exists($identifier, $this->knownManagedFiles['id'])) {
@@ -350,8 +344,10 @@ class FileSystemStorage implements StorageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @throws
      */
-    public function clearExpiredFiles(OutputInterface $output = null)
+    public function clearExpiredFiles(OutputInterface $output = null): void
     {
         if ($output !== null) { $output->writeln('Searching expired files..'); }
         $this->loadTimeLimitedFiles();
@@ -363,8 +359,8 @@ class FileSystemStorage implements StorageInterface
                 if ($now >= $expirationDate) {
                     $toRemove[] = $identifier;
                 }
-            } catch (\Exception $e) {
-                $this->errorTracker->track($e, ['identifier' => $identifier, 'dateStr' => $dateStr]);
+            } catch (\Throwable $e) {
+                $this->logger->error($e->getMessage(), ['exception' => $e, 'identifier' => $identifier, 'dateStr' => $dateStr]);
                 if ($output !== null) {
                     $output->writeln('<error>'.$e->getMessage().'</error>');
                 }
@@ -393,8 +389,8 @@ class FileSystemStorage implements StorageInterface
                 // That's good, we wanted to remove it anyway.
                 // Remove the entry in expiringFiles to avoid having this error indefinitely.
                 unset($this->expiringFiles[$identifier]);
-            } catch (\Exception $e) {
-                $this->errorTracker->track($e, ['identifier' => $identifier]);
+            } catch (\Throwable $e) {
+                $this->logger->error($e->getMessage(), ['exception' => $e, 'identifier' => $identifier]);
                 if ($output !== null) {
                     $output->writeln('<error>'.$e->getMessage().'</error>');
                 }
@@ -405,15 +401,19 @@ class FileSystemStorage implements StorageInterface
     }
 
     /**
+     * List files matching certain criteria.
+     */
+    public function find(int $offset, array $filters = [], int $maxResults = 20): array
+    {
+        return [];
+    }
+
+    /**
      * Utility method to ensure a ManagedFile instance is returned.
-     *
-     * @param ManagedFile|PublicFile|string $file
-     *
-     * @return ManagedFile
      *
      * @throws
      */
-    private function ensureManagedFile($file)
+    private function ensureManagedFile(PublicFile|ManagedFile|string $file): ManagedFile
     {
         if ($file instanceof ManagedFile) {
             return $file;
@@ -422,17 +422,13 @@ class FileSystemStorage implements StorageInterface
             $file = $file->identifier;
         }
         if (!is_string($file)) {
-            $this->errorTracker->trackAndThrow(new \InvalidArgumentException('Argument should be a string or a ManagedFile instance.'), ['input' => $file]);
+            throw new UsageException('Argument should be a string or a ManagedFile instance.', 0, null, ['input' => $file]);
         }
         return $this->load($file);
     }
 
     /**
      * Convert a ManagedFile instance to a string.
-     *
-     * @param ManagedFile $file
-     *
-     * @return string
      */
     private function serializeManagedFile(ManagedFile $file): string
     {
@@ -458,17 +454,13 @@ class FileSystemStorage implements StorageInterface
     /**
      * Try to create a managed file from a metadata file.
      *
-     * @param string $path
-     *
-     * @return ManagedFile
-     *
      * @throws
      */
     private function createManagedFileFromMetadataPath(string $path): ManagedFile
     {
         $content = @file_get_contents($path);
         if ($content === false) {
-            $this->errorTracker->trackAndThrow(new IOException(sprintf('Failed to read file at "%s".', $path)));
+            throw new IOException(sprintf('Failed to read file at "%s".', $path));
         }
         return $this->unserializeManagedFile($content);
     }
@@ -476,17 +468,13 @@ class FileSystemStorage implements StorageInterface
     /**
      * Try to create a ManagedFile instance from a serialized export.
      *
-     * @param string $data
-     *
-     * @return ManagedFile
-     *
      * @throws
      */
     private function unserializeManagedFile(string $data): ManagedFile
     {
         $decoded = @json_decode($data, true);
         if (!is_array($decoded)) {
-            $this->errorTracker->trackAndThrow(new RuntimeException('Invalid metadata.'));
+            throw new UsageException('Invalid metadata.');
         }
         $file = $this->container->get(ManagedFile::class);
         $file->setIdentifier($decoded[0]);
@@ -511,18 +499,10 @@ class FileSystemStorage implements StorageInterface
 
     /**
      * Load the list of files that have a limited time to live.
-     *
-     * @return array
-     *
-     * @throws
      */
     private function loadTimeLimitedFiles(): array
     {
         if ($this->expiringFiles !== null) {
-            return $this->expiringFiles;
-        }
-        if (!$this->sharedStorage) {
-            $this->expiringFiles = [];
             return $this->expiringFiles;
         }
         try {
@@ -533,7 +513,8 @@ class FileSystemStorage implements StorageInterface
                 10,
                 $this->expiringFilesLock
             ));
-        } catch (\Exception | \Throwable $e) {
+        } catch (\Throwable $e) {
+            $this->logger->error($e->getMessage(), ['exception' => $e]);
             $this->expiringFiles = [];
         }
         return $this->expiringFiles;
@@ -541,16 +522,9 @@ class FileSystemStorage implements StorageInterface
 
     /**
      * Save the list of files that have a limited time to live.
-     *
-     * @throws
      */
     public function saveTimeLimitedFiles(): void
     {
-        if (!$this->sharedStorage) {
-            $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
-                'You must install "webeak/shared-storage-bundle" in order to set an expiration date to a file.'
-            ));
-        }
         try {
             $this->sharedStorage->set(self::EXPIRATION_DATES_STORAGE_KEY, $this->expiringFiles, 'wb:file-bundle');
             if ($this->expiringFilesLock) {
@@ -558,17 +532,13 @@ class FileSystemStorage implements StorageInterface
                 $this->expiringFilesLock = null;
             }
             $this->expiringFiles = null;
-        } catch (\Exception | \Throwable $e) {
-            $this->errorTracker->track($e);
+        } catch (\Throwable $e) {
+            $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
     }
 
     /**
      * Gets the absolute path to the metadata file corresponding to an identifier.
-     *
-     * @param string $identifier
-     *
-     * @return string
      */
     private function getMetadataPathForIdentifier(string $identifier): string
     {
@@ -577,10 +547,6 @@ class FileSystemStorage implements StorageInterface
 
     /**
      * Gets the absolute path to the metadata file corresponding to a file hash.
-     *
-     * @param string $hash
-     *
-     * @return string
      */
     private function getMetadataPathForHash(string $hash): string
     {

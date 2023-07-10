@@ -9,39 +9,31 @@ class PublicFile
     /**
      * Unique identifier of the file.
      * Used to make any operation on the file (remove it, changing rights, add a version, etc.).
-     *
-     * @var string
      */
-    public $identifier;
+    public ?string $identifier;
 
     /**
      * Original name of the first version of the file.
-     *
-     * @var string
      */
-    public $name;
+    public ?string $name;
 
     /**
      * Type of the first version of the file.
-     *
-     * @var string
      */
-    public $type;
+    public ?string $type;
 
     /**
      * Versions of the file.
      *
      * @var PublicFileVersion[]
      */
-    public $versions;
+    public array $versions;
 
     /**
      * Public additional data associated with the file.
      * Can be anything.
-     *
-     * @var mixed
      */
-    public $extra;
+    public mixed $extra;
 
     public function __construct()
     {
@@ -67,7 +59,7 @@ class PublicFile
      *
      * @return array
      */
-    public function exportGenericRepresentation()
+    public function exportGenericRepresentation(): array
     {
         $versions = [];
         foreach ($this->versions as $name => $version) {
@@ -87,7 +79,7 @@ class PublicFile
      *
      * @param array $data
      */
-    public function importGenericRepresentation(array $data)
+    public function importGenericRepresentation(array $data): void
     {
         $versions = [];
         if (array_key_exists('versions', $data)) {
@@ -109,7 +101,7 @@ class PublicFile
      *
      * @return PublicFile
      */
-    public static function createFromGenericRepresentation(array $data)
+    public static function createFromGenericRepresentation(array $data): PublicFile
     {
         $instance = new self;
         $instance->importGenericRepresentation($data);

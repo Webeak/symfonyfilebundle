@@ -10,24 +10,16 @@ class FileAdapter implements AdapterInterface
 {
     /**
      * Test if the adapter supports the input.
-     *
-     * @param mixed $input
-     *
-     * @return boolean
      */
-    public function supports($input)
+    public function supports(mixed $input): bool
     {
         return $input instanceof File;
     }
 
     /**
      * Normalize the input value into a File instance.
-     *
-     * @param File $input the input to convert into a File instance
-     *
-     * @return File
      */
-    public function normalize($input)
+    public function normalize($input): File
     {
         return $input;
     }

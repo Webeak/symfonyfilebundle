@@ -1,14 +1,11 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Exception\BadMethodCallException;
-use Webeak\Bundle\FileBundle\Processor\ProcessorInterface;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
-use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\Validator\Constraint;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
+use Webeak\Bundle\FileBundle\Processor\ProcessorInterface;
 use Webeak\Component\Utils\ArrayUtils;
 
 /**
@@ -16,36 +13,20 @@ use Webeak\Component\Utils\ArrayUtils;
  */
 class ConfigurationBuilder
 {
-    /** @var ContainerInterface */
-    protected $container;
-
-    /** @var ErrorTrackerInterface */
-    protected $errorTracker;
-
-    /** @var Configuration */
-    protected $configuration;
-
-    /** @var array */
-    private $presets;
-
-    /** @var array */
-    private $constraintsAliases;
-
-    /** @var array */
-    private $processorsAliases;
-
-    /** @var array */
-    private $processorsSequence;
+    protected ContainerInterface $container;
+    protected Configuration $configuration;
+    private array $presets;
+    private array $constraintsAliases;
+    private array $processorsAliases;
+    private ?array $processorsSequence;
 
     public function __construct(ContainerInterface $container,
-                                ErrorTrackerInterface $errorTracker,
                                 $presets,
                                 $constraintsAliases,
                                 $processorsAliases)
     {
         $this->configuration = new Configuration();
         $this->container = $container;
-        $this->errorTracker = $errorTracker;
         $this->constraintsAliases = $constraintsAliases;
         $this->processorsAliases = $processorsAliases;
         $this->presets = $presets;
@@ -62,7 +43,7 @@ class ConfigurationBuilder
      *
      * @throws
      */
-    public function addConstraint($constraint, array $options = [])
+    public function addConstraint($constraint, array $options = []): static
     {
         if (is_string($constraint)) {
             $fqcn = null;
@@ -72,8 +53,9 @@ class ConfigurationBuilder
                 $fqcn = str_replace('/', '\\', $constraint);
             }
             if (!$fqcn) {
-                $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
-                    sprintf('Constraint "%s" not found. Create an alias or set the FQCN of the target class.', $constraint)
+                throw new UsageException(sprintf(
+                    'Constraint "%s" not found. Create an alias or set the FQCN of the target class.',
+                    $constraint
                 ));
             }
             $constraint = new $fqcn($options);
@@ -81,8 +63,10 @@ class ConfigurationBuilder
         if ($constraint instanceof Constraint) {
             $this->configuration->addConstraint($constraint);
         } else {
-            $this->errorTracker->trackAndThrow(
-                new InvalidConfigurationException('Invalid constraint. Must be a subclass of "Symfony\Component\Validator\Constraint".'),
+            throw new UsageException(
+                'Invalid constraint. Must be a subclass of "Symfony\Component\Validator\Constraint".',
+                0,
+                null,
                 ['constraint' => $constraint]
             );
         }
@@ -103,9 +87,9 @@ class ConfigurationBuilder
     {
         $originalInput = $processor;
         if ($this->processorsSequence === null) {
-            $this->errorTracker->trackAndThrow(new BadMethodCallException(
+            throw new UsageException(
                 'No processor sequence currently active. Call startProcessorsSequence() first.'
-            ));
+            );
         }
         try {
             $service = $processor;
@@ -119,27 +103,25 @@ class ConfigurationBuilder
                 $service->setOptions((array)$options);
                 $this->processorsSequence[] = $service;
             } else {
-                $this->errorTracker->trackAndThrow(new InvalidTypeException(sprintf(
+                throw new UsageException(sprintf(
                     'The processor "%s" must implement "Webeak\Bundle\FileBundle\Processor\ProcessorInterface".',
                     $originalInput
-                )), ['processor' => $processor]);
+                ), 0, null, ['processor' => $processor]);
             }
         } catch (ServiceNotFoundException $e) {
-            $this->errorTracker->trackAndThrow(new InvalidConfigurationException(
-                sprintf('No processor found for "%s". Service "%s" not found.', $originalInput, $processor)
-            ));
+            throw new UsageException(sprintf(
+                'No processor found for "%s". Service "%s" not found.',
+                $originalInput,
+                $processor
+            ), 0, $e);
         }
         return $this;
     }
 
     /**
      * Add new users to the cumulative white list
-     *
-     * @param string|string[] $username
-     *
-     * @return $this
      */
-    public function addUsersWhiteListCumulative($username)
+    public function addUsersWhiteListCumulative($username): static
     {
         $this->configuration->addUsersWhiteListCumulative($username);
         return $this;
@@ -147,12 +129,8 @@ class ConfigurationBuilder
 
     /**
      * Get or set users ids of the cumulative white list.
-     *
-     * @param string|string[] $username
-     *
-     * @return $this|array
      */
-    public function usersWhiteListCumulative($username)
+    public function usersWhiteListCumulative(mixed $username): array|static
     {
         if ($username !== null) {
             $this->configuration->setUsersWhiteListCumulative($username);
@@ -163,12 +141,8 @@ class ConfigurationBuilder
 
     /**
      * Add new users to the exclusive white list
-     *
-     * @param string|string[] $username
-     *
-     * @return $this
      */
-    public function addUsersWhiteListExclusive($username)
+    public function addUsersWhiteListExclusive($username): static
     {
         $this->configuration->addUsersWhiteListExclusive($username);
         return $this;
@@ -176,12 +150,8 @@ class ConfigurationBuilder
 
     /**
      * Get/set users of the exclusive white list
-     *
-     * @param string|string[] $username
-     *
-     * @return array|$this
      */
-    public function usersWhiteListExclusive($username)
+    public function usersWhiteListExclusive($username): array|static
     {
         if ($username !== null) {
             $this->configuration->setUsersWhiteListExclusive($username);
@@ -192,12 +162,8 @@ class ConfigurationBuilder
 
     /**
      * Add new users to the black list
-     *
-     * @param string|string[] $username
-     *
-     * @return $this
      */
-    public function addUsersBlackList($username)
+    public function addUsersBlackList($username): static
     {
         $this->configuration->addUsersBlackList($username);
         return $this;
@@ -205,12 +171,8 @@ class ConfigurationBuilder
 
     /**
      * Get/set users of the black list
-     *
-     * @param string|string[] $username
-     *
-     * @return array|$this
      */
-    public function usersBlackList($username = null)
+    public function usersBlackList($username = null): array|static
     {
         if ($username !== null) {
             $this->configuration->setUsersBlackList($username);
@@ -221,12 +183,8 @@ class ConfigurationBuilder
 
     /**
      * Add roles to the existing set of required roles
-     *
-     * @param string|string[] $requiredRoles
-     *
-     * @return $this
      */
-    public function addRequiredRoles($requiredRoles)
+    public function addRequiredRoles($requiredRoles): static
     {
         $this->configuration->addRequiredRoles($requiredRoles);
         return $this;
@@ -234,12 +192,8 @@ class ConfigurationBuilder
 
     /**
      * Get/set the whole list of required roles
-     *
-     * @param string|array $requiredRoles
-     *
-     * @return array|$this
      */
-    public function requiredRoles($requiredRoles = null)
+    public function requiredRoles($requiredRoles = null): array|static
     {
         if ($requiredRoles !== null) {
             $this->configuration->setRequiredRoles($requiredRoles);
@@ -250,12 +204,8 @@ class ConfigurationBuilder
 
     /**
      * Get/set if the file should be publicly accessible through HTTP
-     *
-     * @param boolean $public
-     *
-     * @return boolean|$this
      */
-    public function public($public = null)
+    public function public($public = null): bool|static
     {
         if ($public !== null) {
             $this->configuration->setPublic($public);
@@ -269,12 +219,8 @@ class ConfigurationBuilder
      * THIS METHOD IS ONLY A SETTER.
      *
      * Call getExpirationDate() to get the current value.
-     *
-     * @param \DateTime $date null for no expiration date (the default value)
-     *
-     * @return $this
      */
-    public function expiresAt(\DateTime $date = null)
+    public function expiresAt(\DateTime $date = null): static
     {
         $this->configuration->setExpirationDate($date);
         return $this;
@@ -282,10 +228,8 @@ class ConfigurationBuilder
 
     /**
      * Get the current expiration date.
-     *
-     * @return \DateTime
      */
-    public function getExpirationDate()
+    public function getExpirationDate(): \DateTimeInterface
     {
         return $this->configuration->getExpirationDate();
     }
@@ -293,12 +237,8 @@ class ConfigurationBuilder
     /**
      * Get/set extra data associated to the file.
      * These extra are PRIVATE and will NOT appear in the PublicFile instance.
-     *
-     * @param array $extra
-     *
-     * @return array|$this
      */
-    public function extra(array $extra = null)
+    public function extra(array $extra = null): array|static
     {
         if ($extra !== null) {
             $this->configuration->addExtra($extra);
@@ -310,12 +250,8 @@ class ConfigurationBuilder
     /**
      * Get/set public extra data associated to the file.
      * These extra are PUBLIC and WILL appear in the PublicFile instance.
-     *
-     * @param array $extra
-     *
-     * @return array|$this
      */
-    public function publicExtra(array $extra = null)
+    public function publicExtra(array $extra = null): array|static
     {
         if ($extra !== null) {
             $this->configuration->addPublicExtra($extra);
@@ -326,10 +262,8 @@ class ConfigurationBuilder
 
     /**
      * Get the Configuration object behind the builder.
-     *
-     * @return Configuration
      */
-    public function getConfiguration()
+    public function getConfiguration(): Configuration
     {
         return $this->configuration;
     }
@@ -345,16 +279,16 @@ class ConfigurationBuilder
      *
      * @throws
      */
-    public function loadPreset($preset, $reset = false)
+    public function loadPreset($preset, $reset = false): static
     {
         if (is_string($preset)) {
             if (!array_key_exists($preset, $this->presets)) {
-                $this->errorTracker->trackAndThrow(new InvalidConfigurationException(sprintf('No configuration preset named "%s" has been found', $preset)));
+                throw new UsageException(sprintf('No configuration preset named "%s" has been found', $preset));
             }
             $preset = $this->presets[$preset];
         }
         if (!is_array($preset)) {
-            $this->errorTracker->trackAndThrow(new \InvalidArgumentException('A preset definition must be an array.', ['input' => $preset]));
+            throw new UsageException('A preset definition must be an array.', 0, null, ['input' => $preset]);
         }
         if ($reset) {
             $this->configuration = new Configuration();
@@ -388,12 +322,12 @@ class ConfigurationBuilder
      * Create a sequence to register processors into.
      * All calls to 'addProcessor()' will be attributed to this sequence until a call to 'endProcessorsSequence()' is made.
      *
-     * @return $this
+     * @throws
      */
-    public function startProcessorsSequence()
+    public function startProcessorsSequence(): static
     {
         if ($this->processorsSequence !== null) {
-            throw new \BadMethodCallException('A processor sequence is already started. Call endProcessorsSequence() first.');
+            throw new UsageException('A processor sequence is already started. Call endProcessorsSequence() first.');
         }
         $this->processorsSequence = [];
         return $this;
@@ -402,12 +336,12 @@ class ConfigurationBuilder
     /**
      * End the current sequence of processors and register them.
      *
-     * @return $this
+     * @throws
      */
-    public function endProcessorsSequence()
+    public function endProcessorsSequence(): static
     {
         if ($this->processorsSequence === null) {
-            throw new \BadMethodCallException('No processor sequence currently active. Call startProcessorsSequence() first.');
+            throw new UsageException('No processor sequence currently active. Call startProcessorsSequence() first.');
         }
         if (count($this->processorsSequence) > 0) {
             $this->configuration->addProcessorsSequence($this->processorsSequence);

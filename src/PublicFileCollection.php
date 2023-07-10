@@ -8,10 +8,6 @@ class PublicFileCollection extends \ArrayObject
 {
     /**
      * Creates a PublicFileCollection instance from an array.
-     *
-     * @param array $input
-     *
-     * @return PublicFileCollection
      */
     public static function createFromArray(array $input): PublicFileCollection
     {

@@ -1,9 +1,9 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Exception;
 
-use Webeak\Bundle\EssentialBundle\Exception\Exception;
+use Webeak\Bundle\EssentialBundle\Exception\SystemException;
 
-class UploadException extends Exception
+class UploadException extends SystemException
 {
 
 }

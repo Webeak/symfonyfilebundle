@@ -2,14 +2,17 @@
 namespace Webeak\Bundle\FileBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\Loader;
-use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\HttpKernel\DependencyInjection\Extension;
+use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\Constraints\File;
+use Symfony\Component\Validator\Constraints\Image;
 use Symfony\Component\Yaml\Parser as YamlParser;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
+use Webeak\Bundle\FileBundle\Constraint\PdfConstraint;
 use Webeak\Component\Utils\ArrayUtils;
 
 /**
@@ -22,7 +25,7 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
     /**
      * {@inheritdoc}
      */
-    public function getAlias()
+    public function getAlias(): string
     {
         return 'wb_file';
     }
@@ -30,7 +33,7 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
     /**
      * {@inheritdoc}
      */
-    public function load(array $configs, ContainerBuilder $container)
+    public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
@@ -63,16 +66,12 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
     /**
      * {@inheritdoc}
      */
-    public function prepend(ContainerBuilder $container)
+    public function prepend(ContainerBuilder $container): void
     {
         $yamlParser = new YamlParser();
         $locator = new FileLocator(__DIR__.'/../Bridge/Doctrine/Resources/config');
         $file = $locator->locate('doctrine.yaml');
-        try {
-            $doctrineConfig = $yamlParser->parse(file_get_contents($file));
-        } catch (ParseException $e) {
-            throw new InvalidArgumentException(sprintf('The file "%s" does not contain valid YAML.', $file), 0, $e);
-        }
+        $doctrineConfig = $yamlParser->parse(file_get_contents($file));
         $container->prependExtensionConfig('doctrine', $doctrineConfig['doctrine']);
     }
 
@@ -80,18 +79,14 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
      * Merge custom constraints defined in the config.yml with default ones
      * and ensure they exist and are valid.
      *
-     * @param array $config
-     *
-     * @return array
-     *
      * @throws
      */
-    private function processConstraintsAliases(array $config)
+    private function processConstraintsAliases(array $config): array
     {
         $aliases = array_merge([
-            'file' => 'Symfony\Component\Validator\Constraints\File',
-            'image' => 'Symfony\Component\Validator\Constraints\Image',
-            'pdf' => 'Webeak\Bundle\FileBundle\Constraint\PdfConstraint'
+            'file' => File::class,
+            'image' => Image::class,
+            'pdf' => PdfConstraint::class
         ], (array)$config['constraints_aliases']);
 
         foreach ($aliases as $name => $fqcn) {
@@ -111,7 +106,7 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
      *
      * @throws
      */
-    private function processPresets(array $config, array &$aliases)
+    private function processPresets(array $config, array &$aliases): array
     {
         if (!array_key_exists('configuration_presets', $config)) {
             return [];
@@ -122,7 +117,7 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
                 $toRemove = [];
                 foreach ($data['constraints'] as $cname => $cdata) {
                     if (!array_key_exists($cname, $aliases)) {
-                        if (strpos($cname, '/') !== false || strpos($cname, '\\') !== false) {
+                        if (str_contains($cname, '/') || str_contains($cname, '\\')) {
                             $fqcn = str_replace('/', '\\', $cname);
                             $this->ensureValidConstraint($fqcn);
                             $alias = '__cemf_a'.$generatedCount;
@@ -130,9 +125,11 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
                             $data['constraints'][$alias] = $cdata;
                             $toRemove[] = $cname;
                         } else {
-                            throw new InvalidConfigurationException(
-                                sprintf('Constraint "%s" not found. Create an alias or set the FQCN of the target class.', $cname)
-                            );
+                            throw new UsageException(sprintf(
+                                'Constraint "%s" not found. '.
+                                'Create an alias or set the FQCN of the target class.',
+                                $cname
+                            ));
                         }
                     }
                 }
@@ -147,17 +144,16 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
     /**
      * Ensure the class exists and is a subclass of the symfony base class.
      *
-     * @param string $fqcn
-     *
      * @throws
      */
-    private function ensureValidConstraint($fqcn)
+    private function ensureValidConstraint(string $fqcn): void
     {
         $refl = new \ReflectionClass($fqcn);
-        if (!$refl->isSubclassOf('\Symfony\Component\Validator\Constraint')) {
-            throw new InvalidConfigurationException(
-                sprintf('Constraint "%s" is not a subclass of "Symfony\Component\Validator\Constraint".', $fqcn)
-            );
+        if (!$refl->isSubclassOf(Constraint::class)) {
+            throw new InvalidConfigurationException(sprintf(
+                'Constraint "%s" is not a subclass of "%s".',
+                $fqcn, Constraint::class
+            ));
         }
     }
 }

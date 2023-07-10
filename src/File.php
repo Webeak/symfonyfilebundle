@@ -1,6 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
+use ReturnTypeWillChange;
 use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
 
 /**
@@ -8,44 +9,29 @@ use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
  */
 class File extends SymfonyFile
 {
-    /** @var string */
-    protected $identifier;
-
-    /** @var string */
-    protected $versionName;
-
-    /** @var string */
-    protected $virtualName;
-
-    /** @var boolean */
-    protected $public;
-
-    /** @var string[] */
-    protected $errors;
-
-    /** @var boolean */
-    private $_shouldBeProcessed;
+    protected ?string $identifier;
+    protected ?string $versionName;
+    protected ?string $virtualName;
+    protected bool $public;
+    protected array $errors;
+    private bool $_shouldBeProcessed;
 
     public function __construct($path, $checkPath = false, File $file = null)
     {
         parent::__construct($path, $checkPath);
         $this->errors = [];
-        $this->identifier = $file !== null ? $file->getIdentifier() : null;
+        $this->identifier = $file?->getIdentifier();
         $this->public = $file !== null ? $file->isPublic() : false;
-        $this->versionName = $file !== null ? $file->getVersionName() : null;
-        $this->virtualName = $file !== null ? $file->getVirtualName() : null;
+        $this->versionName = $file?->getVersionName();
+        $this->virtualName = $file?->getVirtualName();
         $this->_shouldBeProcessed = false;
     }
 
     /**
      * Add an error message or an array of messages to the
      * current list of errors.
-     *
-     * @param string|array $errors
-     *
-     * @return $this
      */
-    public function addErrors($errors)
+    public function addErrors(array|string $errors): static
     {
         if (!is_array($errors)) {
             $errors = [$errors];
@@ -56,32 +42,24 @@ class File extends SymfonyFile
 
     /**
      * Get the whole list of error messages.
-     *
-     * @return string[]
      */
-    public function getErrors()
+    public function getErrors(): array
     {
         return $this->errors;
     }
 
     /**
      * Test if errors have been registered.
-     *
-     * @return boolean
      */
-    public function hasError()
+    public function hasError(): bool
     {
         return count($this->errors) > 0;
     }
 
     /**
      * Set the whole list of error messages.
-     *
-     * @param string|array $errors
-     *
-     * @return $this
      */
-    public function setErrors($errors)
+    public function setErrors(array|string $errors): static
     {
         $this->errors = [];
         $this->addErrors($errors);
@@ -90,22 +68,16 @@ class File extends SymfonyFile
 
     /**
      * Get the file's unique identifier.
-     *
-     * @return string
      */
-    public function getIdentifier()
+    public function getIdentifier(): ?string
     {
         return $this->identifier;
     }
 
     /**
      * Set the file's unique identifier.
-     *
-     * @param string $identifier
-     *
-     * @return $this
      */
-    public function setIdentifier($identifier)
+    public function setIdentifier(string $identifier): static
     {
         $this->identifier = $identifier;
         return $this;
@@ -113,22 +85,16 @@ class File extends SymfonyFile
 
     /**
      * Get the file's version name.
-     *
-     * @return string
      */
-    public function getVersionName()
+    public function getVersionName(): ?string
     {
         return $this->versionName;
     }
 
     /**
      * Set the file's version name.
-     *
-     * @param string $name
-     *
-     * @return $this
      */
-    public function setVersionName($name)
+    public function setVersionName(string $name): static
     {
         $this->versionName = $name;
         return $this;
@@ -136,35 +102,29 @@ class File extends SymfonyFile
 
     /**
      * Get the file's virtual name.
-     *
-     * @return string
      */
-    public function getVirtualName()
+    public function getVirtualName(): ?string
     {
         return $this->virtualName;
     }
 
     /**
      * Set the file's virtual name.
-     *
-     * @param string $name
-     *
-     * @return $this
      */
-    public function setVirtualName($name)
+    public function setVirtualName(string $name): static
     {
         $this->virtualName = $name;
         return $this;
     }
 
-    public function getHash()
+    public function getHash(): string
     {
         try {
             $realPath = $this->getRealPath();
             if ($realPath) {
                 return '#' . md5_file($realPath);
             }
-        } catch (\Exception | \Throwable $e) {
+        } catch (\Throwable $e) {
             // Ignore
         }
         return md5(microtime()); // So no risk to incorrectly match a hash.
@@ -172,10 +132,8 @@ class File extends SymfonyFile
     
     /**
      * Try to get the extension of the file.
-     *
-     * @return string|null
      */
-    public function getExtension()
+    public function getExtension(): string
     {
         if ($this->virtualName && ($pos = strrpos($this->virtualName, '.')) !== false) {
             return strtolower(substr($this->virtualName, $pos + 1));
@@ -185,12 +143,8 @@ class File extends SymfonyFile
 
     /**
      * Get/Set if the file should be passed to processors.
-     *
-     * @param boolean|null $val
-     *
-     * @return boolean|$this
      */
-    public function shouldBeProcessed($val = null)
+    public function shouldBeProcessed(?bool $val = null): bool|static
     {
         if ($val !== null) {
             $this->_shouldBeProcessed = !!$val;
@@ -202,14 +156,10 @@ class File extends SymfonyFile
     /**
      * Get/Set if the file is public or not.
      *
-     * A public file will have a direct access in HTTP.
+     * A public file will have direct access in HTTP.
      * A private file will only be accessible through a proxy action.
-     *
-     * @param boolean|null $val
-     *
-     * @return boolean|$this
      */
-    public function isPublic($val = null)
+    public function isPublic(?bool $val = null): bool|static
     {
         if ($val !== null) {
             $this->public = !!$val;
@@ -220,11 +170,9 @@ class File extends SymfonyFile
 
     /**
      * Test if the file is an image.
-     *
-     * @return boolean
      */
-    public function isImage()
+    public function isImage(): bool
     {
-        return substr($this->getMimeType(), 0, 6) === 'image/';
+        return str_starts_with($this->getMimeType(), 'image/');
     }
 }

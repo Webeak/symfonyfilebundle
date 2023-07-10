@@ -1,7 +1,6 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\FileBundle\Exception\UploadException;
 use Webeak\Bundle\FileBundle\File;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
@@ -12,26 +11,15 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 class UploadedFileAdapter implements AdapterInterface
 {
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
-
-    /** @var FileSystemInterface */
-    private $filesystem;
-
-    public function __construct(ErrorTrackerInterface $errorTracker, FileSystemInterface $filesystem)
+    public function __construct(private readonly FileSystemInterface $filesystem)
     {
-        $this->errorTracker = $errorTracker;
-        $this->filesystem = $filesystem;
+
     }
 
     /**
      * Test if the adapter supports the input.
-     *
-     * @param mixed $input
-     *
-     * @return boolean
      */
-    public function supports($input)
+    public function supports(mixed $input): bool
     {
         return $input instanceof UploadedFile;
     }
@@ -45,10 +33,10 @@ class UploadedFileAdapter implements AdapterInterface
      *
      * @throws
      */
-    public function normalize($input)
+    public function normalize($input): File
     {
         if (!$input->isValid()) {
-            $this->errorTracker->trackAndThrow(new UploadException(sprintf('The upload failed. Reason: %s', $input->getErrorMessage())));
+            throw new UploadException(sprintf('The upload failed. Reason: %s', $input->getErrorMessage()));
         }
         $file = $this->filesystem->move($input->getRealPath(), $this->filesystem->generateTemporaryPath());
         $file->setVirtualName($input->getClientOriginalName());

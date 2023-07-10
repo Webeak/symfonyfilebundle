@@ -4,9 +4,7 @@ namespace Webeak\Bundle\FileBundle\FileSystem;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem as SymfonyFilesystem;
 use Symfony\Component\Finder\Finder;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
-use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
 use Webeak\Bundle\FileBundle\File;
 use Webeak\Component\Utils\RandomGenerator;
 
@@ -17,9 +15,6 @@ class LocalFileSystem implements FileSystemInterface
 {
     /** @var SymfonyFilesystem */
     protected $symfonyFilesystem;
-
-    /** @var ErrorTrackerInterface */
-    protected $errorTracker;
 
     /** @var string */
     protected $rootDir;
@@ -36,8 +31,7 @@ class LocalFileSystem implements FileSystemInterface
     /** @var string */
     protected $publicStorageDir;
 
-    public function __construct(ErrorTrackerInterface $errorTracker,
-                                SymfonyFilesystem $symfonyFilesystem,
+    public function __construct(SymfonyFilesystem $symfonyFilesystem,
                                 $rootDir,
                                 $publicRootDir)
     {
@@ -47,7 +41,6 @@ class LocalFileSystem implements FileSystemInterface
         $this->storageDir = $this->ensurePathExists($this->rootDir.'/storage');
         $this->publicStorageDir = $this->ensurePathExists($publicRootDir);
         $this->symfonyFilesystem = $symfonyFilesystem;
-        $this->errorTracker = $errorTracker;
     }
 
     /**
@@ -60,7 +53,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @throws
      */
-    public function copy($source, $dest)
+    public function copy($source, $dest): File
     {
         $sourceInstance = null;
         if ($source instanceof File) {
@@ -81,7 +74,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @throws
      */
-    public function move($source, $dest)
+    public function move($source, $dest): File
     {
         $sourceInstance = null;
         if ($source instanceof File) {
@@ -99,7 +92,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @return mixed
      */
-    public function read($source)
+    public function read($source): mixed
     {
         if ($source instanceof File) {
             $source = $source->getRealPath();
@@ -115,24 +108,20 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @throws
      */
-    public function write($source, $content)
+    public function write($source, $content): void
     {
         if ($source instanceof File) {
             $source = $source->getRealPath();
         }
-        if (@file_put_contents($source, $content, LOCK_EX | FILE_BINARY) === false) {
-            $this->errorTracker->trackAndThrow(new IOException('Failed to write to "%s".', $source));
+        if (@file_put_contents($source, $content, LOCK_EX) === false) {
+            throw new IOException('Failed to write to "%s".', $source);
         }
     }
 
     /**
      * Write the input content in a new temporary file.
-     *
-     * @param mixed $content content of the file
-     *
-     * @return File the temporary file object
      */
-    public function writeTemporarily($content)
+    public function writeTemporarily($content): File
     {
         $path = $this->generateTemporaryPath();
         $this->write($path, $content);
@@ -141,12 +130,8 @@ class LocalFileSystem implements FileSystemInterface
 
     /**
      * Remove a file.
-     *
-     * @param File|string $file
-     *
-     * @return boolean
      */
-    public function remove($file)
+    public function remove($file): bool
     {
         if ($file instanceof File) {
             $file = $file->getRealPath();
@@ -159,10 +144,8 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @param File|string $file
      * @param integer     $limit (optional, default: -1) how many upper level to remove at max? < 0 means no limit.
-     *
-     * @return boolean
      */
-    public function removeWithParentIfEmpty($file, $limit = 0)
+    public function removeWithParentIfEmpty($file, $limit = 0): bool
     {
         $path = ($file instanceof File) ? $file->getRealPath() : $file;
         if (is_dir($path)) {
@@ -189,7 +172,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @return File
      */
-    public function persist(File $file)
+    public function persist(File $file): File
     {
         if (!$this->isTemporary($file)) {
             return $file;
@@ -222,7 +205,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @throws
      */
-    public function generateTemporaryPath()
+    public function generateTemporaryPath(): string
     {
         return $this->tempDir.'/'.$this->generateTemporaryIdentifier();
     }
@@ -239,7 +222,7 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @throws
      */
-    public function generateTemporaryIdentifier()
+    public function generateTemporaryIdentifier(): string
     {
         $identifier = RandomGenerator::randomString(5);
         $maxTries = 5;
@@ -252,15 +235,11 @@ class LocalFileSystem implements FileSystemInterface
             }
             $identifier .= RandomGenerator::randomString(1);
         }
-        throw new RuntimeException('Failed to create a unique path for the file.');
+        throw new IOException('Failed to create a unique path for the file.');
     }
 
     /**
      * Ensure a path exists or throws an exception.
-     *
-     * @param $path
-     *
-     * @return string|void
      *
      * @throws
      */
@@ -274,22 +253,20 @@ class LocalFileSystem implements FileSystemInterface
         if ($path && ($output = realpath($path)) !== false) {
             return $output;
         }
-        $this->errorTracker->trackAndThrow(new IOException(sprintf('Unable to create path "%s".', $path)));
+        throw new IOException(sprintf('Unable to create path "%s".', $path));
     }
 
     /**
      * Release the lock associated with a file.
      *
-     * @param File file
-     *
      * @return boolean|null true if the lock has been found and successfully removed
      *                      false if the lock has been found BUT failed to remove
      *                      null if the lock has NOT been found
      */
-    public function release(File $file)
+    public function release(File $file): ?bool
     {
         $identifier = $file->getFilename();
-        if (substr($identifier, 0, strlen($this->tempDir)) !== $this->tempDir) {
+        if (!str_starts_with($identifier, $this->tempDir)) {
             $identifier = $this->locksDir.'/'.$identifier;
         }
         if (file_exists($identifier)) {
@@ -301,7 +278,7 @@ class LocalFileSystem implements FileSystemInterface
     /**
      * Remove empty directories managed by the filesystem.
      */
-    public function clearEmptyDirectories()
+    public function clearEmptyDirectories(): void
     {
         $finder = new Finder();
         $finder->directories();
@@ -326,24 +303,22 @@ class LocalFileSystem implements FileSystemInterface
      *
      * @return boolean
      */
-    public function isTemporary($file)
+    public function isTemporary($file): bool
     {
         if ($file instanceof File) {
             $file = $file->getRealPath();
         }
-        return substr($file, 0, strlen($this->tempDir)) === $this->tempDir;
+        return str_starts_with($file, $this->tempDir);
     }
 
     /**
      * Search for temporary files older than 10 minutes.
-     * If a file is found, the process responsible of it may have crashed before clearing it.
+     * If a file is found, the process responsible for it may have crashed before clearing it.
      * The role of this method is to clean up these ghosts files.
      *
      * Should only be called by a command.
-     *
-     * @param OutputInterface $output
      */
-    public function clearOldTemporaryFiles(OutputInterface $output = null)
+    public function clearOldTemporaryFiles(OutputInterface $output = null): void
     {
         if ($output) { $output->writeLn(sprintf('Searching for temporary files to remove..')); }
         $finder = new Finder();
@@ -359,7 +334,7 @@ class LocalFileSystem implements FileSystemInterface
                 $output->writeLn('<info>Success.</info>');
             }
         }
-        if ($output) { $output->writeLn(sprintf('End of search.')); }
+        if ($output) { $output->writeLn('End of search.'); }
     }
 
     public function createFile($path): File

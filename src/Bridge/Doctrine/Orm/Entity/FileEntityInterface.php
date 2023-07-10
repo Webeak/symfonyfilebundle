@@ -5,197 +5,127 @@ interface FileEntityInterface
 {
     /**
      * Set the unique identifier of the file.
-     *
-     * @param string $identifier
-     *
-     * @return FileEntityInterface
      */
-    public function setIdentifier($identifier);
+    public function setIdentifier(string $identifier): FileEntityInterface;
 
     /**
      * Get the unique identifier of the file.
-     *
-     * @return string
      */
-    public function getIdentifier();
+    public function getIdentifier(): string;
 
     /**
      * Set name
-     *
-     * @param string $name
-     *
-     * @return FileEntityInterface
      */
-    public function setName($name);
+    public function setName(string $name): FileEntityInterface;
 
     /**
      * Get name
-     *
-     * @return string
      */
-    public function getName();
+    public function getName(): string;
 
     /**
      * Set mimeType
-     *
-     * @param string $mimeType
-     *
-     * @return FileEntityInterface
      */
-    public function setMimeType($mimeType);
+    public function setMimeType(string $mimeType): FileEntityInterface;
 
     /**
      * Get mimeType
-     *
-     * @return string
      */
-    public function getMimeType();
+    public function getMimeType(): string;
 
     /**
      * Add new versions
-     *
-     * @param array $versions
-     *
-     * @return FileEntityInterface
      */
-    public function addVersions(array $versions);
+    public function addVersions(array $versions): FileEntityInterface;
 
     /**
      * Add a new version
-     *
-     * @param string $name
-     * @param string $path
-     *
-     * @return FileEntityInterface
      */
-    public function addVersion($name, $path);
+    public function addVersion(string $name, string $path): FileEntityInterface;
 
     /**
      * Set the whole list of versions
-     *
-     * @param array $versions
-     *
-     * @return FileEntityInterface
      */
-    public function setVersions(array $versions);
+    public function setVersions(array $versions): FileEntityInterface;
 
     /**
      * Get versions
-     *
-     * @return array
      */
-    public function getVersions();
+    public function getVersions(): array;
 
     /**
      * Set configuration
-     *
-     * @param array $configuration
-     *
-     * @return FileEntityInterface
      */
-    public function setConfiguration(array $configuration);
+    public function setConfiguration(array $configuration): FileEntityInterface;
 
     /**
      * Get configuration
-     *
-     * @return array
      */
-    public function getConfiguration();
+    public function getConfiguration(): array;
 
     /**
      * Set extra
-     *
-     * @param array $extra
-     *
-     * @return FileEntityInterface
      */
-    public function setExtra(array $extra);
+    public function setExtra(array $extra): FileEntityInterface;
 
     /**
      * Get extra
      *
      * @return array
      */
-    public function getExtra();
+    public function getExtra(): array;
 
     /**
      * Set public extra
-     *
-     * @param array $extra
-     *
-     * @return FileEntityInterface
      */
-    public function setPublicExtra(array $extra);
+    public function setPublicExtra(array $extra): FileEntityInterface;
 
     /**
      * Get public extra
      *
      * @return array
      */
-    public function getPublicExtra();
+    public function getPublicExtra(): array;
 
     /**
      * Set the expiration date of the file
-     *
-     * @param \DateTime $date
-     *
-     * @return FileEntityInterface
      */
-    public function setExpirationDate(\DateTime $date = null);
+    public function setExpirationDate(?\DateTimeInterface $date = null): FileEntityInterface;
 
     /**
      * Get the expiration date of the file
-     *
-     * @return \DateTime
      */
-    public function getExpirationDate();
+    public function getExpirationDate(): ?\DateTimeInterface;
 
     /**
      * Gets the total number of entities using this file.
-     *
-     * @return integer
      */
-    public function getUsageCount();
+    public function getUsageCount(): int;
 
     /**
      * Sets the total number of entities using this file.
-     *
-     * @param integer $count
-     *
-     * @return AbstractFile
      */
-    public function setUsageCount($count);
+    public function setUsageCount(int $count): FileEntityInterface;
 
     /**
      * Sets the md5 hash of the source file.
-     *
-     * @param string $hash
-     *
-     * @return FileEntityInterface
      */
-    public function setSourceFileHash($hash);
+    public function setSourceFileHash(string $hash): FileEntityInterface;
 
     /**
      * Gets the md5 hash of the source file.
-     *
-     * @return string
      */
-    public function getSourceFileHash();
+    public function getSourceFileHash(): string;
 
     /**
      * Sets the md5 hash of the FileEntityInterface.
-     *
-     * @param string $hash
-     *
-     * @return FileEntityInterface
      */
-    public function setHash($hash);
+    public function setHash(string $hash): FileEntityInterface;
 
     /**
      * Gets the md5 hash of the FileEntityInterface.
      *
      * @return string
      */
-    public function getHash();
+    public function getHash(): string;
 }
-

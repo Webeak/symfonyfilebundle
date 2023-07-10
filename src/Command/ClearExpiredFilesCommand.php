@@ -8,24 +8,19 @@ use Webeak\Bundle\FileBundle\FileManager;
 
 class ClearExpiredFilesCommand extends Command
 {
-    /** @var FileManager */
-    private $fileManager;
-
-    public function __construct(FileManager $fileManager, string $name = null)
+    public function __construct(private readonly FileManager $fileManager, string $name = null)
     {
         parent::__construct($name);
-        $this->fileManager = $fileManager;
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('wb:file:clear-expired')
              ->setDescription('Clears expired files');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): void
     {
         $this->fileManager->clearExpiredFiles($output);
     }
 }
-

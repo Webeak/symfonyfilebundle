@@ -4,9 +4,9 @@ namespace Webeak\Bundle\FileBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
-use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\File;
+use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
 
 /**
  * This is the class that validates and merges configuration from your app/config files.
@@ -21,12 +21,7 @@ class Configuration implements ConfigurationInterface
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder('wb_file');
-        if (method_exists($treeBuilder, 'getRootNode')) {
-            $rootNode = $treeBuilder->getRootNode();
-        } else {
-            $rootNode = $treeBuilder->root('wb_file');
-        }
-        $rootNode
+        $treeBuilder->getRootNode()
             ->addDefaultsIfNotSet()
             ->children()
                 ->scalarNode('save_path')
@@ -122,7 +117,7 @@ class Configuration implements ConfigurationInterface
                                     $fqcn = str_replace('/', '\\', $v);
                                     $refl = new \ReflectionClass($fqcn);
                                     if (!$refl->implementsInterface(FileEntityInterface::class)) {
-                                        throw new InvalidConfigurationException(sprintf('Class "%s" must implement the "FileEntityInterface" interface.', $fqcn));
+                                        throw new UsageException(sprintf('Class "%s" must implement the "FileEntityInterface" interface.', $fqcn));
                                     }
                                     return $fqcn;
                                 })

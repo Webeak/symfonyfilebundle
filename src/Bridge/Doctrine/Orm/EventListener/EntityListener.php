@@ -1,48 +1,36 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\EventListener;
 
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\StaticLogger;
-use Webeak\Bundle\FileBundle\FilesTrait;
-use Webeak\Component\Utils\ArrayUtils;
-use Webeak\Component\Utils\ObjectUtils;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Event\OnFlushEventArgs;
+use Doctrine\ORM\Event\PostLoadEventArgs;
+use Doctrine\ORM\UnitOfWork;
+use Doctrine\Persistence\Proxy;
 use Webeak\Bundle\FileBundle\FileManager;
+use Webeak\Bundle\FileBundle\FilesTrait;
 use Webeak\Bundle\FileBundle\PublicFile;
 use Webeak\Bundle\FileBundle\PublicFileCollection;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\Event\LifecycleEventArgs;
-use Doctrine\ORM\Event\OnFlushEventArgs;
-use Doctrine\ORM\UnitOfWork;
+use Webeak\Component\Utils\ArrayUtils;
+use Webeak\Component\Utils\ObjectUtils;
 
 class EntityListener
 {
     use FilesTrait;
 
-    /** @var FileManager */
-    private $fileManager;
+    private array $oldValues;
 
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
-
-    /** @var array */
-    private $oldValues;
-
-    public function __construct(FileManager $fileManager, ErrorTrackerInterface $errorTracker)
+    public function __construct(private readonly FileManager $fileManager)
     {
-        $this->fileManager = $fileManager;
-        $this->errorTracker = $errorTracker;
         $this->oldValues = [];
     }
 
     /**
      * Doctrine 'postLoad' lifecycle hook callback.
-     *
-     * @param LifecycleEventArgs $args
      */
-    final public function postLoad(LifecycleEventArgs $args)
+    final public function postLoad(PostLoadEventArgs $args): void
     {
-        $em = $args->getEntityManager();
-        $entity = $args->getEntity();
+        $em = $args->getObjectManager();
+        $entity = $args->getObject();
         $metadata = $em->getClassMetadata(get_class($entity), $entity);
         $hash = null;
         foreach ($metadata->fieldMappings as $name => $data) {
@@ -53,7 +41,7 @@ class EntityListener
                 if (!array_key_exists($hash, $this->oldValues)) {
                     $this->oldValues[$hash] = [];
                 }
-                if (!($entity instanceof \Doctrine\Common\Persistence\Proxy)) {
+                if (!($entity instanceof Proxy)) {
                     $this->oldValues[$hash][$data['fieldName']] = ObjectUtils::readProperty($entity, $data['fieldName']);
                 }
             }
@@ -72,9 +60,9 @@ class EntityListener
      *
      * @throws
      */
-    final public function onFlush(OnFlushEventArgs $args)
+    final public function onFlush(OnFlushEventArgs $args): void
     {
-        $em = $args->getEntityManager();
+        $em = $args->getObjectManager();
         $uow = $em->getUnitOfWork();
         $insertions = $uow->getScheduledEntityInsertions();
         $updates = $uow->getScheduledEntityUpdates();
@@ -96,12 +84,8 @@ class EntityListener
     /**
      * Handle changes on files before the entity is flushed into the database.
      * This method will call the FileManager to validate new files and will remove deleted files.
-     *
-     * @param EntityManager $em
-     * @param UnitOfWork $uow
-     * @param $entity
      */
-    private function prepareEntityForWriting(EntityManager $em, UnitOfWork $uow, $entity)
+    private function prepareEntityForWriting(EntityManager $em, UnitOfWork $uow, $entity): void
     {
         $changed = false;
         $metadata = null;
@@ -152,11 +136,8 @@ class EntityListener
 
     /**
      * Removes files associated with an entity before it is removed.
-     *
-     * @param EntityManager $em
-     * @param $entity
      */
-    private function prepareEntityForDeletion(EntityManager $em, $entity)
+    private function prepareEntityForDeletion(EntityManager $em, $entity): void
     {
         $metadata = null;
         $hash = spl_object_hash($entity);
@@ -176,11 +157,8 @@ class EntityListener
 
     /**
      * Removes expiration date of files associated with an entity.
-     *
-     * @param EntityManager $em
-     * @param object        $entity
      */
-    private function validateFiles(EntityManager $em, $entity)
+    private function validateFiles(EntityManager $em, $entity): void
     {
         $metadata = $em->getClassMetadata(get_class($entity), $entity);
         foreach ($metadata->fieldMappings as $name => $data) {
@@ -202,8 +180,6 @@ class EntityListener
                 } catch (\Exception | \Throwable $e) {
                     // An exception here MUST NOT interrupt the process.
                     // Simply log it and continue.
-                    StaticLogger::error($e->getMessage(), ['exception' => $e]);
-
                     if ($value instanceof PublicFile) {
                         ObjectUtils::writeProperty($entity, $data['fieldName'], null);
                     } else {

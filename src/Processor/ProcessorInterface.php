@@ -17,7 +17,7 @@ interface ProcessorInterface
      *
      * @return boolean
      */
-    public function supports(File $file, ManagedFile $parent);
+    public function supports(File $file, ManagedFile $parent): bool;
 
     /**
      * Do the processing.
@@ -27,7 +27,7 @@ interface ProcessorInterface
      *
      * @return File
      */
-    public function process(File $file, ManagedFile $parent);
+    public function process(File $file, ManagedFile $parent): File;
 
     /**
      * Set an array of options.
@@ -41,7 +41,7 @@ interface ProcessorInterface
      *
      * @return array
      */
-    public function getOptions();
+    public function getOptions(): array;
 
     /**
      * Get the id of the service in the container.
@@ -49,5 +49,5 @@ interface ProcessorInterface
      *
      * @return string
      */
-    public function getServiceId();
+    public function getServiceId(): string;
 }

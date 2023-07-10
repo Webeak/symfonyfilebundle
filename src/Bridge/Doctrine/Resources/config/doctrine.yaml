@@ -2,7 +2,7 @@ doctrine:
     orm:
         mappings:
             WebeakFileBundle:
-                type: annotation
+                type: attribute
                 dir: "Bridge/Doctrine/Orm/Entity"
                 alias: FileBundle
                 prefix: "Webeak\\Bundle\\FileBundle\\Bridge\\Doctrine\\Orm\\Entity"

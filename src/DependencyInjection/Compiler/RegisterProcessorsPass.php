@@ -7,7 +7,7 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 
 class RegisterProcessorsPass implements CompilerPassInterface
 {
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         $aliases = [];
         foreach ($container->findTaggedServiceIds('wb.file.file_manager_processor') as $id => $attributes) {

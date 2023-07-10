@@ -8,13 +8,9 @@ use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 
 class ClearTempFilesCommand extends Command
 {
-    /** @var FileSystemInterface */
-    private $fileSystem;
-
-    public function __construct(FileSystemInterface $fileSystem, string $name = null)
+    public function __construct(private readonly FileSystemInterface $fileSystem, string $name = null)
     {
         parent::__construct($name);
-        $this->fileSystem = $fileSystem;
     }
 
     protected function configure()
@@ -23,7 +19,7 @@ class ClearTempFilesCommand extends Command
              ->setDescription('Clears temporary files');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): void
     {
         $this->fileSystem->clearOldTemporaryFiles($output);
     }

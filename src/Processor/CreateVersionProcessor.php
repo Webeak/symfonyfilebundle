@@ -12,17 +12,12 @@ class CreateVersionProcessor extends AbstractProcessor
 {
     /**
      * Name of the version to create.
-     *
-     * @var string
      */
-    public $name;
+    public string $name;
 
-    /** @var FileSystemInterface */
-    private $filesystem;
-
-    public function __construct(FileSystemInterface $filesystem)
+    public function __construct(private readonly FileSystemInterface $filesystem)
     {
-        $this->filesystem = $filesystem;
+
     }
 
     /**
@@ -33,7 +28,7 @@ class CreateVersionProcessor extends AbstractProcessor
      *
      * @return boolean
      */
-    public function supports(File $file, ManagedFile $parent)
+    public function supports(File $file, ManagedFile $parent): bool
     {
         return true;
     }
@@ -46,7 +41,7 @@ class CreateVersionProcessor extends AbstractProcessor
      *
      * @return File
      */
-    public function process(File $file, ManagedFile $parent)
+    public function process(File $file, ManagedFile $parent): File
     {
         $copy = $this->filesystem->copy($file, $file->getRealPath().'.v'.$this->name);
         $parent->addVersion($copy, $this->name);

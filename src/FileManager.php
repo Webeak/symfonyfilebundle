@@ -4,13 +4,11 @@ namespace Webeak\Bundle\FileBundle;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Webeak\Bundle\ErrorTrackerBundle\ErrorTrackerInterface;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidArgumentException;
-use Webeak\Bundle\EssentialBundle\Exception\InvalidConfigurationException;
-use Webeak\Bundle\EssentialBundle\Exception\RuntimeException;
-use Webeak\Bundle\EssentialBundle\RandomTaskFactory;
 use Webeak\Bundle\DoctrineExtensionsBundle\Utils\UniqueIdGenerator;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
+use Webeak\Bundle\EssentialBundle\RandomTaskFactory;
 use Webeak\Bundle\FileBundle\Adapter\AdapterInterface;
+use Webeak\Bundle\FileBundle\Exception\FileExpiredException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Exception\FileProtectedException;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
@@ -30,41 +28,37 @@ use Webeak\Bundle\FileBundle\Storage\StorageInterface;
 class FileManager
 {
     /** @var ContainerInterface */
-    private $container;
+    private ContainerInterface $container;
 
     /** @var ValidatorInterface */
-    private $validator;
-
-    /** @var ErrorTrackerInterface */
-    private $errorTracker;
+    private ValidatorInterface $validator;
 
     /** @var UniqueIdGenerator */
-    private $uniqueIdGenerator;
+    private UniqueIdGenerator $uniqueIdGenerator;
 
-    /** @var AdapterInterface */
-    private $adapters;
+    /** @var AdapterInterface[] */
+    private array $adapters;
 
-    /** @var ProcessorInterface */
-    private $processors;
+    /** @var ProcessorInterface[] */
+    private array $processors;
 
-    /** @var StorageInterface */
-    private $storages;
+    /** @var StorageInterface[] */
+    private array $storages;
 
     /** @var FileSystemInterface */
-    private $filesystem;
+    private FileSystemInterface $filesystem;
 
     /** @var RandomTaskFactory */
-    private $randomTaskFactory;
+    private RandomTaskFactory $randomTaskFactory;
 
     /** @var string */
-    private $storageType;
+    private string $storageType;
 
     /** @var integer */
-    private $tempFilesLifetime;
+    private int $tempFilesLifetime;
 
     public function __construct(ContainerInterface $container,
                                 ValidatorInterface $validator,
-                                ErrorTrackerInterface $errorTracker,
                                 UniqueIdGenerator $uniqueIdGenerator,
                                 FileSystemInterface $filesystem,
                                 RandomTaskFactory $randomTaskFactory,
@@ -73,7 +67,6 @@ class FileManager
     {
         $this->container = $container;
         $this->validator = $validator;
-        $this->errorTracker = $errorTracker;
         $this->uniqueIdGenerator = $uniqueIdGenerator;
         $this->filesystem = $filesystem;
         $this->storageType = $storageType;
@@ -93,7 +86,7 @@ class FileManager
      *
      * @return ManagedFile[]
      */
-    public function register($input, $configuration = null)
+    public function register(mixed $input, mixed $configuration = null): array
     {
         $files = $this->prepareForRegistration($input, $configuration);
         for ($i = 0, $ii = count($files); $i < $ii; ++$i) {
@@ -109,13 +102,9 @@ class FileManager
      * Register a file using its content.
      * You may want to define its content type and name too.
      *
-     * @param mixed                      $content        content of the file
-     * @param string                     $name           name of the file
-     * @param string|array|Configuration $configuration (optional)
-     *
      * @return ManagedFile[]
      */
-    public function registerByContent($content, $name, $configuration = null)
+    public function registerByContent(mixed $content, string $name, array|string|Configuration $configuration = null): array
     {
         $file = $this->filesystem->writeTemporarily($content);
         $file->setVirtualName($name);
@@ -129,32 +118,25 @@ class FileManager
      * The lifetime of the file is determined by the configuration property "temp_files_lifetime" (default value is 2 hours).
      * For more control, you can set the expiration date of the file in the configuration object yourself.
      *
-     * @param mixed                      $input          any input supported by at least one adapter
-     * @param string|array|Configuration $configuration (optional)
-     *
      * @return ManagedFile[]
      *
      * @throws
      */
-    public function registerTemporarily($input, $configuration = null)
+    public function registerTemporarily(mixed $input, array|string|Configuration $configuration = null): array
     {
         $configuration = $this->resolveConfiguration($configuration);
-        $date = new \DateTime();
-        $date->setTimestamp($date->getTimestamp() + max(60, intval($this->tempFilesLifetime)));
-        $configuration->setExpirationDate($date);
+        $now = new \DateTime('now', new \DateTimeZone('UTC'));
+        $now->add(new \DateInterval(sprintf('PT%dS', max(60, intval($this->tempFilesLifetime)))));
+        $configuration->setExpirationDate($now);
         return $this->register($input, $configuration);
     }
 
     /**
      * To confirm registration of a temporary file.
      *
-     * @param ManagedFile|PublicFile|string $file
-     *
-     * @return PublicFile
-     *
      * @throws
      */
-    public function confirmRegistration($file)
+    public function confirmRegistration(PublicFile|ManagedFile|string $file): PublicFile
     {
         $storage = $this->getStorage();
         $file = $this->ensureManagedFile($file);
@@ -176,13 +158,9 @@ class FileManager
      * This method returns a ManagedFile which may contain multiple version.
      * You can use getVersion($identifier, $version) to get a specific version.
      *
-     * @param string $identifier
-     *
-     * @return ManagedFile
-     *
      * @throws
      */
-    public function get($identifier)
+    public function get(string $identifier): ManagedFile
     {
         $storage = $this->getStorage();
         $managedFile = $storage->load($identifier);
@@ -203,32 +181,28 @@ class FileManager
      *
      * If after the remove, no more versions persist in the managed file, it will be removed as well.
      *
-     * @param ManagedFile|PublicFile|string $file
-     * @param string|array|null  $version
+     * If `force` is true, the usage count is ignored, and the file is always removed.
      *
      * @throws
      */
-    public function remove($file, $version = null): void
+    public function remove(PublicFile|ManagedFile|string $file, array|string|null $version = null, bool $force = false): void
     {
         $storage = $this->getStorage();
         $file = $this->ensureManagedFile($file);
         $this->ensureAccessGranted($file);
         if ($version !== null) {
-            if ($file->hasVersion($version)) {
-                $versions = $file->getVersions();
-                // Remove the only version of the file is the same as removing the file as a whole.
-                if (count($versions) === 1) {
-                    $this->remove($file);
-                    return ;
-                }
-                $storage->removeVersion($file, $version);
-            } else {
-                $this->errorTracker->trackAndThrow(new InvalidArgumentException(sprintf(
-                    'No version "%s" have been found.', $version
-                )));
+            if (!$file->hasVersion($version)) {
+                throw new UsageException(sprintf('No version "%s" have been found.', $version));
             }
+            $versions = $file->getVersions();
+            // Remove the only version of the file is the same as removing the file as a whole.
+            if (count($versions) === 1) {
+                $this->remove($file);
+                return ;
+            }
+            $storage->removeVersion($file, $version);
         } else {
-            $storage->remove($file);
+            $storage->remove($file, $force);
         }
     }
 
@@ -240,7 +214,7 @@ class FileManager
      *
      * @throws
      */
-    public function persist($files): void
+    public function persist(mixed $files): void
     {
         if (!is_array($files)) {
             $files = [$files];
@@ -248,13 +222,10 @@ class FileManager
         $storage = $this->getStorage();
         for ($i = 0, $ii = count($files); $i < $ii; ++$i) {
             $file = $files[$i];
-            if ($file instanceof ManagedFile) {
-                $storage->persist($file);
-            } else {
-                $this->errorTracker->trackAndThrow(
-                    new InvalidArgumentException('Invalid input for persist(). Only "ManagedFile" objects are accepted.')
-                );
+            if (!($file instanceof ManagedFile)) {
+                throw new UsageException('Invalid input for persist(). Only "ManagedFile" objects are accepted.');
             }
+            $storage->persist($file);
         }
     }
 
@@ -263,23 +234,20 @@ class FileManager
      * This will be done automatically on the 'kernel.terminate' event.
      * However, you can force it manually to ensure its done and have a feedback.
      *
-     * @param ManagedFile[] $files (optional, default: null) array of files to flush, if not defined the whole pool will be flushed
+     * @throws
      */
-    public function flush($files = null): void
+    public function flush(): void
     {
         $storage = $this->getStorage();
-        $storage->flush($files);
+        $storage->flush();
     }
 
     /**
      * Dependency injection callback for registering constraints bound using services' tags.
      *
      * To register here you need to add the tag "wb.file.file_manager_adapter" to the service concerned.
-     *
-     * @param mixed $service
-     * @param array $attributes
      */
-    public function registerAdapter($service, $attributes): void
+    public function registerAdapter(mixed $service, array $attributes): void
     {
         if (!($service instanceof AdapterInterface)) {
             throw new \InvalidArgumentException(sprintf('The adapter "%s" must implement the "AdapterInterface".', get_class($service)));
@@ -292,29 +260,23 @@ class FileManager
      *
      * To register here you need to add the tag "wb.file.file_manager_processor" to the service concerned.
      *
-     * @param mixed  $service
-     * @param string $serviceId
-     * @param array  $attributes
-     *
      * @throws
      */
-    public function registerProcessor($service, $serviceId, $attributes): void
+    public function registerProcessor(mixed $service, string $serviceId, array $attributes): void
     {
         if (!($service instanceof ProcessorInterface)) {
             throw new \InvalidArgumentException(sprintf('The processor "%s" must implement the "ProcessorInterface".', get_class($service)));
         }
         $this->processors[$serviceId] = $service;
-        if (is_array($attributes)) {
-            for ($i = 0, $ii = count($attributes); $i < $ii; ++$i) {
-                if (array_key_exists('alias', $attributes[$i])) {
-                    if (!array_key_exists($attributes[$i]['alias'], $this->processors)) {
-                        $this->processors[$attributes[$i]['alias']] = $service;
-                    } else {
-                        throw new InvalidConfigurationException(
-                            sprintf('A processor named "%s" has already been defined.', $attributes[$i]['alias'])
-                        );
-                    }
+        for ($i = 0, $ii = count($attributes); $i < $ii; ++$i) {
+            if (array_key_exists('alias', $attributes[$i])) {
+                if (array_key_exists($attributes[$i]['alias'], $this->processors)) {
+                    throw new UsageException(sprintf(
+                        'A processor named "%s" has already been defined.',
+                        $attributes[$i]['alias']
+                    ));
                 }
+                $this->processors[$attributes[$i]['alias']] = $service;
             }
         }
     }
@@ -324,31 +286,27 @@ class FileManager
      *
      * To register here you need to add the tag "wb.file.file_manager_storage" to the service concerned.
      *
-     * @param mixed $service
-     * @param array $attributes
-     *
      * @throws
      */
-    public function registerStorage($service, $attributes): void
+    public function registerStorage(mixed $service, array $attributes): void
     {
         if (!($service instanceof StorageInterface)) {
             throw new \InvalidArgumentException(sprintf('The storage "%s" must implement the "StorageInterface".', get_class($service)));
         }
-        if (is_array($attributes)) {
-            for ($i = 0, $ii = count($attributes); $i < $ii; ++$i) {
-                if (array_key_exists('alias', $attributes[$i])) {
-                    if (!array_key_exists($attributes[$i]['alias'], $this->storages)) {
-                        $this->storages[$attributes[$i]['alias']] = $service;
-                        return ;
-                    } else {
-                        throw new InvalidConfigurationException(
-                            sprintf('A storage named "%s" has already been defined.', $attributes[$i]['alias'])
-                        );
-                    }
-                }
+        for ($i = 0, $ii = count($attributes); $i < $ii; ++$i) {
+            if (!array_key_exists('alias', $attributes[$i])) {
+                continue;
             }
+            if (array_key_exists($attributes[$i]['alias'], $this->storages)) {
+                throw new UsageException(sprintf(
+                    'A storage named "%s" has already been defined.',
+                    $attributes[$i]['alias']
+                ));
+            }
+            $this->storages[$attributes[$i]['alias']] = $service;
+            return ;
         }
-        throw new InvalidConfigurationException('A storage must define an "alias" attribute in its tag.');
+        throw new UsageException('A storage must define an "alias" attribute in its tag.');
     }
 
     /**
@@ -363,8 +321,6 @@ class FileManager
 
     /**
      * Clear files for which the expiration date has been reached.
-     *
-     * @param OutputInterface $output
      */
     public function clearExpiredFiles(?OutputInterface $output = null): void
     {
@@ -373,12 +329,16 @@ class FileManager
     }
 
     /**
+     * List files matching certain criteria.
+     */
+    public function find(?int $offset, array $filters = [], int $maxResults = 20): array
+    {
+        return $this->getStorage()->find($offset, $filters, $maxResults);
+    }
+
+    /**
      * Try to find the duplicate of a file already in the storage to avoid
      * saving twice the same file.
-     *
-     * @param ManagedFile $file
-     * 
-     * @return ManagedFile|null
      */
     private function getFileDuplicate(ManagedFile $file): ?ManagedFile
     {
@@ -410,12 +370,9 @@ class FileManager
      *
      * A ManagedFile object will be created even if errors occurs. Errors are stored in the object.
      *
-     * @param mixed                      $input          any input supported by at least one adapter
-     * @param string|array|Configuration $configuration (optional)
-     *
      * @return ManagedFile[]
      */
-    private function prepareForRegistration($input, $configuration = null)
+    private function prepareForRegistration(mixed $input, array|string|null|Configuration $configuration = null): array
     {
         $configuration = $this->resolveConfiguration($configuration);
         $files = $this->normalizeInput($input, $configuration);
@@ -452,14 +409,11 @@ class FileManager
      * Takes an input and returns a normalized array of File instances.
      * This method will test the input against all adapters until it finds a valid one.
      *
-     * @param mixed         $input         input to normalize
-     * @param Configuration $configuration configuration
-     *
      * @return ManagedFile[] normalized output
      *
      * @throws
      */
-    private function normalizeInput($input, Configuration $configuration)
+    private function normalizeInput(mixed $input, Configuration $configuration): array
     {
         $output = [];
         if (!is_array($input)) {
@@ -467,10 +421,10 @@ class FileManager
         }
         $isAssoc = array_keys($input) !== range(0, count($input) - 1);
         if ($isAssoc && count(array_filter(array_keys($input), 'is_int')) > 0) {
-            $this->errorTracker->trackAndThrow(new InvalidArgumentException(
+            throw new UsageException(
                 'You can\'t set numerical indexes to an associative array as input. '.
                 'The array should be sequential or only contain string keys.'
-            ));
+            );
         }
         $managedFile = null;
         foreach ($input as $key => $value) {
@@ -492,13 +446,15 @@ class FileManager
                             $file->isPublic($managedFile->getConfiguration()->isPublic());
                             $managedFile->addVersion($file, $isAssoc ? $key : 'default');
                         } else {
-                            $this->errorTracker->track(
-                                new \RuntimeException(sprintf(
-                                    'The adapter "%s" didn\'t return a valid File instance.', get_class($this->adapters[$i])
-                                ))
-                            );
+                            throw new UsageException(sprintf(
+                                'The adapter "%s" didn\'t return a valid File instance.',
+                                get_class($this->adapters[$i])
+                            ));
                         }
-                    } catch (\Exception $e) {
+                    } catch (\Throwable $e) {
+                        if ($e instanceof UsageException) {
+                            throw $e;
+                        }
                         $managedFile->addErrors($e->getMessage());
                     }
                     break ;
@@ -509,7 +465,6 @@ class FileManager
                 if (strlen($str) > 100) {
                     $str = substr($str, 0, 100).'[..]';
                 }
-                $this->errorTracker->track(new RuntimeException(sprintf('No adapter found for input "%s".', $str)));
                 $managedFile->addErrors(sprintf('No adapter found to handle this input: "%s".', $str));
             }
         }
@@ -519,8 +474,6 @@ class FileManager
     /**
      * Get the current storage.
      *
-     * @return StorageInterface
-     *
      * @throws
      */
     private function getStorage(): StorageInterface
@@ -528,19 +481,17 @@ class FileManager
         if (array_key_exists($this->storageType, $this->storages)) {
             return $this->storages[$this->storageType];
         }
-        $this->errorTracker->trackAndThrow(
-            new RuntimeException(sprintf('No storage named "%s" has been registered.', $this->storageType))
-        );
+        throw new UsageException(sprintf(
+            'No storage named "%s" has been registered.',
+            $this->storageType
+        ));
     }
 
     /**
      * Validates an instance or an array of instances of ManagedFile.
      * If violations are found, error messages are added to the ManagedFile instance.
-     *
-     * @param ManagedFile|ManagedFile[] $files
-     * @param Configuration             $configuration
      */
-    private function validateManagedFiles($files, Configuration $configuration): void
+    private function validateManagedFiles(array|ManagedFile $files, Configuration $configuration): void
     {
         if (!$configuration->hasConstraints()) {
             return ;
@@ -550,7 +501,7 @@ class FileManager
         }
         for ($i = 0, $ii = count($files); $i < $ii; ++$i) {
             $versions = $files[$i]->getVersions();
-            foreach ($versions as $name => $file) {
+            foreach ($versions as $file) {
                 $this->validateFile($file, $configuration);
             }
         }
@@ -559,11 +510,8 @@ class FileManager
     /**
      * Execute processors for an instance or an array of instances of ManagedFile.
      * The whole processor configuration is execute independently for each of its versions.
-     *
-     * @param ManagedFile|ManagedFile[] $files
-     * @param Configuration             $configuration
      */
-    private function processManagedFiles($files, Configuration $configuration): void
+    private function processManagedFiles(array|ManagedFile $files, Configuration $configuration): void
     {
         if (!$configuration->hasProcessors()) {
             return ;
@@ -585,13 +533,17 @@ class FileManager
                                 if ($processor->supports($previousOutput, $files[$i])) {
                                     $output = $processor->process($previousOutput, $files[$i]);
                                     if (!($output instanceof File)) {
-                                        $this->errorTracker->trackAndThrow(new RuntimeException(
-                                            sprintf('Invalid output for processor "%s". It must return a File instance.', get_class($processor))
-                                        ), ['output' => $output]);
+                                        throw new UsageException(sprintf(
+                                            'Invalid output for processor "%s". It must return a File instance.',
+                                            get_class($processor)
+                                        ), 0, null, ['output' => $output]);
                                     }
                                     $previousOutput = $output;
                                 }
                             } catch (\Exception $e) {
+                                if ($e instanceof UsageException) {
+                                    throw $e;
+                                }
                                 $file->addErrors($e->getMessage());
                                 break;
                             }
@@ -610,9 +562,6 @@ class FileManager
 
     /**
      * Validate a File instance.
-     *
-     * @param File          $file
-     * @param Configuration $configuration
      */
     private function validateFile(File $file, Configuration $configuration): void
     {
@@ -635,13 +584,9 @@ class FileManager
      *   - an object: a Configuration instance (simply returned if so)
      *   - null: no configuration, a default configuration instance is created
      *
-     * @param string|array|Configuration $configuration
-     *
-     * @return Configuration
-     *
      * @throws
      */
-    private function resolveConfiguration($configuration): Configuration
+    private function resolveConfiguration(array|string|null|Configuration $configuration): Configuration
     {
         if ($configuration === null) {
             return new Configuration();
@@ -657,13 +602,9 @@ class FileManager
     /**
      * Utility method to ensure a ManagedFile instance is returned.
      *
-     * @param ManagedFile|PublicFile|string $file
-     *
-     * @return ManagedFile
-     *
      * @throws
      */
-    private function ensureManagedFile($file): ManagedFile
+    private function ensureManagedFile(PublicFile|ManagedFile|string $file): ManagedFile
     {
         if ($file instanceof ManagedFile) {
             return $file;
@@ -672,11 +613,16 @@ class FileManager
             $file = $file->identifier;
         }
         if (!is_string($file)) {
-            $this->errorTracker->trackAndThrow(new InvalidArgumentException('Argument should be a string or a ManagedFile instance.'), ['input' => $file]);
+            throw new UsageException(
+                'Argument should be a string or a ManagedFile instance.',
+                0,
+                null,
+                ['input' => $file]
+            );
         }
         $managedFile = $this->getStorage()->load($file);
         if ($managedFile->hasExpired()) {
-            throw new FileNotFoundException('Not found.');
+            throw new FileExpiredException(sprintf('File expired on "%s".', $managedFile->getExpirationDate()?->format('Y-m-d H:i:s')));
         }
         return $managedFile;
     }
@@ -684,17 +630,15 @@ class FileManager
     /**
      * Check if the current user has access to a given file and throw an exception if not.
      *
-     * @param ManagedFile $managedFile
-     *
      * @throws
      */
-    private function ensureAccessGranted(ManagedFile $managedFile)
+    private function ensureAccessGranted(ManagedFile $managedFile): void
     {
         if (!$managedFile->hasAccessLimitations()) {
             return ;
         }
         if (!$this->container->has('security.token_storage')) {
-            $this->errorTracker->trackAndThrow(new InvalidConfigurationException('You must install symfony/security-bundle in order to use access control on the file manager.'));
+            throw new UsageException('You must install symfony/security-bundle in order to use access control on the file manager.');
         }
         $tokenStorage = $this->container->get('security.token_storage');
         $token = $tokenStorage->getToken();
@@ -706,6 +650,8 @@ class FileManager
 
     /**
      * Will maybe clear expired files and/or temporary files.
+     *
+     * @throws
      */
     private function maybeRunCleanupCommands(): void
     {

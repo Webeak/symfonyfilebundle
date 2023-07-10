@@ -1,8 +1,8 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
-use Webeak\Component\Utils\ArrayUtils;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
+use Webeak\Component\Utils\ArrayUtils;
 
 /**
  * Set of utility methods useful to work with files.
@@ -21,7 +21,8 @@ trait FilesTrait
      *
      * @return mixed
      */
-    protected function handleFileChanges($before, $now, $multiple = false) {
+    protected function handleFileChanges(mixed $before, mixed $now, bool $multiple = false): mixed
+    {
         if ($multiple) {
             return $this->handleMultipleFileChange($before, $now);
         }
@@ -32,13 +33,9 @@ trait FilesTrait
      * Handle a single file change.
      * Removes the old file if defined and different from the new one.
      * This method also confirm the new file.
-     *
-     * @param mixed $before
-     * @param mixed $now
-     *
-     * @return PublicFile|null
      */
-    protected function handleSingleFileChange($before, $now) {
+    protected function handleSingleFileChange(mixed $before, mixed $now): ?PublicFile
+    {
         $beforeIdentifier = $this->normalizeFileToIdentifier($before);
         $now = $this->normalizeFileToPublicFile($now);
         $identifierToRemove = null;
@@ -69,13 +66,9 @@ trait FilesTrait
     /**
      * Handle multiple files changes.
      * Removes old files that are not present anymore and confirm new ones.
-     *
-     * @param mixed $before
-     * @param mixed $now
-     *
-     * @return PublicFile[]|null
      */
-    protected function handleMultipleFileChange($before, $now) {
+    protected function handleMultipleFileChange(mixed $before, mixed $now): ?array
+    {
         $before = $before instanceof PublicFileCollection ? iterator_to_array($before) : ArrayUtils::ensureArray($before);
         $now = $now instanceof PublicFileCollection ? iterator_to_array($now) : ArrayUtils::ensureArray($now);
         for ($i = 0, $bc = count($before); $i < $bc; ++$i) {
@@ -138,12 +131,9 @@ trait FilesTrait
     /**
      * Normalize an input to a file identifier.
      * Null is returned if no identifier can be found.
-     *
-     * @param mixed $input
-     *
-     * @return string|null
      */
-    protected function normalizeFileToIdentifier($input) {
+    protected function normalizeFileToIdentifier(mixed $input): ?string
+    {
         $inputIdentifier = is_string($input) ? $input : null;
         if (is_array($input) && $input) {
             $input = PublicFile::createFromGenericRepresentation($input);
@@ -157,12 +147,9 @@ trait FilesTrait
     /**
      * Normalize an input to a PublicFile instance.
      * Null is returned if no valid PublicFile can be created from the input.
-     *
-     * @param mixed $input
-     *
-     * @return PublicFile|null
      */
-    protected function normalizeFileToPublicFile($input) {
+    protected function normalizeFileToPublicFile(mixed $input): ?PublicFile
+    {
         if (is_array($input) && $input) {
             return PublicFile::createFromGenericRepresentation($input);
         } else if (is_string($input)) {
