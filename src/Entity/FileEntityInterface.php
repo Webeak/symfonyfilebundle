@@ -1,5 +1,5 @@
 <?php
-namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity;
+namespace Webeak\Bundle\FileBundle\Entity;
 
 interface FileEntityInterface
 {

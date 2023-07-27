@@ -45,7 +45,7 @@ class Article
 When you register a file, metadata describing the file must be saved as well.
 With the doctrine storage, they are saved in the database.
 
-By default, metadata are stored in a `wb_file_file` defined in the `Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\File` entity.
+By default, metadata are stored in a `wb_file_file` defined in the `Webeak\Bundle\FileBundle\Entity\File` entity.
 
 This entity only contains the necessary info the bundle needs to work. 
 It inherits from `AbstractFile` which implements the interface `FileEntityInterface` (both of the same namespace).
@@ -68,4 +68,3 @@ take the appropriate measures to deal with them:
 - Same with collections. The listener will search for missing files from the previous version and remove them from the filesystem automatically.
 
 **Note**: A counter is maintained in the internal metadata to know how many entities use the same file. The file will only be removed when the counter reach 0.
-
