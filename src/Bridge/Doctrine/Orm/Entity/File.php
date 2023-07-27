@@ -1,5 +1,5 @@
 <?php
-namespace Webeak\Bundle\FileBundle\Entity;
+namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 

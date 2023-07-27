@@ -7,7 +7,7 @@ use Webeak\Bundle\EssentialBundle\Exception\IOException;
 use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\EssentialBundle\SharedStorage\LockInterface;
 use Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface;
-use Webeak\Bundle\FileBundle\Entity\FileEntityInterface;
+use Webeak\Bundle\FileBundle\Bridge\Doctrine\Orm\Entity\FileEntityInterface;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\Configuration;
 use Webeak\Bundle\FileBundle\File;

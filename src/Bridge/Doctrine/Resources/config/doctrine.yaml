@@ -1,9 +1,0 @@
-doctrine:
-    orm:
-        mappings:
-            WebeakFileBundle:
-                type: attribute
-                dir: "Bridge/Doctrine/Orm/Entity"
-                alias: FileBundle
-                prefix: "Webeak\\Bundle\\FileBundle\\Bridge\\Doctrine\\Orm\\Entity"
-                is_bundle: true

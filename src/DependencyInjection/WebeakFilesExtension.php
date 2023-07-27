@@ -4,13 +4,11 @@ namespace Webeak\Bundle\FileBundle\DependencyInjection;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\File;
 use Symfony\Component\Validator\Constraints\Image;
-use Symfony\Component\Yaml\Parser as YamlParser;
 use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Constraint\PdfConstraint;
 use Webeak\Component\Utils\ArrayUtils;
@@ -20,7 +18,7 @@ use Webeak\Component\Utils\ArrayUtils;
  *
  * @link http://symfony.com/doc/current/cookbook/bundles/extension.html
  */
-class WebeakFilesExtension extends Extension implements PrependExtensionInterface
+class WebeakFilesExtension extends Extension
 {
     /**
      * {@inheritdoc}
@@ -61,18 +59,6 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
         ]);
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yaml');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function prepend(ContainerBuilder $container): void
-    {
-        $yamlParser = new YamlParser();
-        $locator = new FileLocator(__DIR__.'/../Bridge/Doctrine/Resources/config');
-        $file = $locator->locate('doctrine.yaml');
-        $doctrineConfig = $yamlParser->parse(file_get_contents($file));
-        $container->prependExtensionConfig('doctrine', $doctrineConfig['doctrine']);
     }
 
     /**
