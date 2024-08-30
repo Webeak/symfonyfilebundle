@@ -62,6 +62,14 @@ class Configuration
      */
     protected $public;
 
+    /**
+     * Set if the file should have an expiration date when uploaded.
+     * If `autoConfirm` is set to true, the file will not have an expiration date.
+     *
+     * @var boolean
+     */
+    protected $autoConfirm;
+
     /** @var \DateTime */
     protected $expirationDate;
 
@@ -80,6 +88,7 @@ class Configuration
         $this->usersBlackList = [];
         $this->requiredRoles = [];
         $this->public = false;
+        $this->autoConfirm = false;
         $this->expirationDate = null;
         $this->extra = [];
         $this->publicExtra = [];
@@ -338,6 +347,30 @@ class Configuration
     }
 
     /**
+     * Set if the file should have an expiration date when uploaded.
+     * If `autoConfirm` is set to true, the file will not have an expiration date.
+     *
+     * @param boolean $autoConfirm
+     *
+     * @return $this
+     */
+    public function setAutoConfirm($autoConfirm)
+    {
+        $this->autoConfirm = !!$autoConfirm;
+        return $this;
+    }
+
+    /**
+     * Get if the file should auto confirm when uploaded.
+     *
+     * @return boolean
+     */
+    public function getAutoConfirm()
+    {
+        return $this->autoConfirm;
+    }
+
+    /**
      * Set the expiration date of the file.
      * The file will be removed if that date is reached before it's confirmed.
      *
@@ -475,6 +508,7 @@ class Configuration
             'usersBlackList' => $this->usersBlackList,
             'requiredRoles' => $this->requiredRoles,
             'public' => $this->public,
+            'autoConfirm' => $this->autoConfirm,
             'expirationDate' => $this->expirationDate instanceof \DateTime ? $this->expirationDate->format('Y-m-d H:i:s') : null,
             'extra' => $this->extra,
             'publicExtra' => $this->publicExtra

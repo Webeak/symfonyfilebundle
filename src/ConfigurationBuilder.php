@@ -215,6 +215,18 @@ class ConfigurationBuilder
     }
 
     /**
+     * Get/set if the file should auto confirm when uploaded.
+     */
+    public function autoConfirm($autoConfirm = null): bool|static
+    {
+        if ($autoConfirm !== null) {
+            $this->configuration->setAutoConfirm($autoConfirm);
+            return $this;
+        }
+        return $this->configuration->getAutoConfirm();
+    }
+
+    /**
      * Set the expiration date.
      * THIS METHOD IS ONLY A SETTER.
      *
@@ -313,6 +325,7 @@ class ConfigurationBuilder
         $this->addUsersWhiteListCumulative(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'whiteListCumulative')));
         $this->addUsersBlackList(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'blackList')));
         $this->public(ArrayUtils::getValue($preset, 'public', $this->public()));
+        $this->autoConfirm(ArrayUtils::getValue($preset, 'autoConfirm', $this->autoConfirm()));
         $this->extra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'extra')));
         $this->publicExtra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'publicExtra')));
         return $this;

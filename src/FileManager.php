@@ -125,9 +125,13 @@ class FileManager
     public function registerTemporarily(mixed $input, array|string|Configuration $configuration = null): array
     {
         $configuration = $this->resolveConfiguration($configuration);
-        $now = new \DateTime('now', new \DateTimeZone('UTC'));
-        $now->add(new \DateInterval(sprintf('PT%dS', max(60, intval($this->tempFilesLifetime)))));
-        $configuration->setExpirationDate($now);
+        if (!$configuration->getAutoConfirm()) {
+            $now = new \DateTime('now', new \DateTimeZone('UTC'));
+            $now->add(new \DateInterval(sprintf('PT%dS', max(60, intval($this->tempFilesLifetime)))));
+            $configuration->setExpirationDate($now);
+        } else {
+            $configuration->setExpirationDate(null);
+        }
         return $this->register($input, $configuration);
     }
 
