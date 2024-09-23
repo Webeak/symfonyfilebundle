@@ -128,4 +128,14 @@ interface FileEntityInterface
      * @return string
      */
     public function getHash(): string;
+
+    /**
+     * Sets the type of file system used to store the file.
+     */
+    public function setFileSystemType(?string $type): FileEntityInterface;
+
+    /**
+     * Gets the type of file system used to store the file.
+     */
+    public function getFileSystemType(): ?string;
 }

@@ -1,21 +1,16 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
-use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
+use Webeak\Bundle\FileBundle\ManagedFile;
+use Webeak\Bundle\FileBundle\VirtualFile;
 
 /**
  * Handle local path to a file.
  */
 class LocalPathAdapter implements AdapterInterface
 {
-    public function __construct(private readonly FileSystemInterface $fileSystem)
-    {
-
-    }
-
     /**
-     * Test if the adapter supports the input.
+     * @inheritDoc
      */
     public function supports(mixed $input): bool
     {
@@ -23,12 +18,14 @@ class LocalPathAdapter implements AdapterInterface
     }
 
     /**
-     * Normalize the input value into a (symfony) File instance.
+     * @inheritDoc
      */
-    public function normalize(mixed $input): File
+    public function normalize(mixed $input, ManagedFile $managedFile): VirtualFile
     {
-        $file = $this->fileSystem->copy($input, $this->fileSystem->generateTemporaryPath());
-        $file->setVirtualName(substr($input, intval(strrpos(str_replace('\\', '/', $input), '/')) + 1));
-        return $file;
+        $virtualFile = $managedFile->createVersion();
+        $virtualFile->setVirtualName(substr($input, intval(strrpos(str_replace('\\', '/', $input), '/')) + 1));
+        $virtualFile->setFileSystem($managedFile->getFileSystem());
+        $virtualFile->setContentStream(fopen($input, 'r'));
+        return $virtualFile;
     }
 }

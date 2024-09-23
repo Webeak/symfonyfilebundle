@@ -1,7 +1,9 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
-use Webeak\Bundle\FileBundle\File;
+use League\Flysystem\Filesystem;
+use Webeak\Bundle\FileBundle\ManagedFile;
+use Webeak\Bundle\FileBundle\VirtualFile;
 
 /**
  * Dummy adapter simply forwarding an already normalized File instance.
@@ -13,13 +15,13 @@ class FileAdapter implements AdapterInterface
      */
     public function supports(mixed $input): bool
     {
-        return $input instanceof File;
+        return $input instanceof VirtualFile;
     }
 
     /**
      * Normalize the input value into a File instance.
      */
-    public function normalize($input): File
+    public function normalize($input, ManagedFile $managedFile): VirtualFile
     {
         return $input;
     }

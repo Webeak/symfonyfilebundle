@@ -1,7 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Processor;
 
-use Webeak\Bundle\FileBundle\File;
+use Webeak\Bundle\FileBundle\VirtualFile;
 use Webeak\Bundle\FileBundle\ManagedFile;
 
 /**
@@ -12,22 +12,22 @@ interface ProcessorInterface
     /**
      * Test if the processor supports the input.
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
      * @return boolean
      */
-    public function supports(File $file, ManagedFile $parent): bool;
+    public function supports(VirtualFile $file, ManagedFile $parent): bool;
 
     /**
      * Do the processing.
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
-     * @return File
+     * @return VirtualFile
      */
-    public function process(File $file, ManagedFile $parent): File;
+    public function process(VirtualFile $file, ManagedFile $parent): VirtualFile;
 
     /**
      * Set an array of options.

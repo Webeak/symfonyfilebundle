@@ -26,9 +26,9 @@ services:
             - '@service_container'
             - '@validator'
             - '@Webeak\Bundle\DoctrineExtensionsBundle\Utils\UniqueIdGenerator'
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
+            - '@Webeak\Bundle\FileBundle\FileIdentifierManager'
             - '@Webeak\Bundle\EssentialBundle\RandomTaskFactory'
-            - '%wb.file.storage_type%'
+            - '@Webeak\Bundle\FileBundle\Storage\StorageCollection'
             - '%wb.file.temp_files_lifetime%'
         tags:
             - { name: 'kernel.event_listener', event: 'kernel.terminate', method: onKernelTerminate }
@@ -46,10 +46,18 @@ services:
         public: true
         shared: false
         arguments:
-            - '@request_stack'
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
             - '@router'
-            - '%kernel.project_dir%'
+            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemCollection'
+            - '@Webeak\Bundle\FileBundle\FileIdentifierManager'
+            - '%wb.file.default_filesystem%'
+            - '%wb.file.default_storage%'
+
+    Webeak\Bundle\FileBundle\FileIdentifierManager:
+        public: true
+        shared: false
+        arguments:
+            - '@doctrine'
+            - '@Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface'
 
     #
     # Adapters
@@ -59,20 +67,16 @@ services:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\UploadedFileAdapter:
-        arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\HttpPathAdapter:
         arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
+            - '@http_client'
         tags:
             - { name: wb.file.file_manager_adapter }
 
     Webeak\Bundle\FileBundle\Adapter\LocalPathAdapter:
-        arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: wb.file.file_manager_adapter }
 
@@ -80,7 +84,6 @@ services:
     # Processors
     #
     Webeak\Bundle\FileBundle\Processor\CreateVersionProcessor:
-        arguments: ['@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface']
         tags:
             - { name: wb.file.file_manager_processor, alias: createVersion }
 
@@ -92,49 +95,12 @@ services:
     #
     # Storage
     #
-    Webeak\Bundle\FileBundle\Storage\FileSystemStorage:
-        arguments:
-            - '@service_container'
-            - '@kernel'
-            - '@Psr\Log\LoggerInterface'
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
-        calls:
-            - [setSharedStorage, ['@Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface']]
-        tags:
-            - { name: wb.file.file_manager_storage, alias: filesystem }
-
-    Webeak\Bundle\FileBundle\Storage\DoctrineStorage:
-        arguments:
-            - '@service_container'
-            - '@doctrine'
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
-            - '%wb.file.doctrine_storage%'
-        tags:
-            - { name: wb.file.file_manager_storage, alias: doctrine }
+    Webeak\Bundle\FileBundle\Storage\StorageCollection: ~
 
     #
     # FileSystem
     #
-    Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface: ~
-
-    Webeak\Bundle\FileBundle\FileSystem\LocalFileSystem:
-        public: true
-        arguments:
-            - '@filesystem'
-            - '%wb.file.save_path%'
-            - '%wb.file.public_save_path%'
-        tags:
-            - { name: wb.file.file_filesystem, alias: local }
-
-    Webeak\Bundle\FileBundle\FileSystem\AwsS3FileSystem:
-        public: true
-        arguments:
-            - '@filesystem'
-            - '@Webeak\Bundle\FileBundle\Aws\S3Bucket'
-            - '%wb.file.save_path%'
-            - '%wb.file.public_save_path%'
-        tags:
-            - { name: wb.file.file_filesystem, alias: aws_s3 }
+    Webeak\Bundle\FileBundle\FileSystem\FileSystemCollection: ~
 
     #
     # Normalizer
@@ -173,15 +139,5 @@ services:
             - { name: 'console.command', command: 'wb:file:clear-expired' }
 
     Webeak\Bundle\FileBundle\Command\ClearTempFilesCommand:
-        arguments:
-            - '@Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface'
         tags:
             - { name: 'console.command', command: 'wb:file:clear' }
-
-    #
-    # AWS
-    #
-    Webeak\Bundle\FileBundle\Aws\S3Bucket:
-        public: true
-        arguments:
-            - '%wb.file.aws_s3_storage%'

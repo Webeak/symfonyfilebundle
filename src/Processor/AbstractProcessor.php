@@ -2,7 +2,7 @@
 namespace Webeak\Bundle\FileBundle\Processor;
 
 use Webeak\Bundle\EssentialBundle\Exception\UsageException;
-use Webeak\Bundle\FileBundle\File;
+use Webeak\Bundle\FileBundle\VirtualFile;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Webeak\Component\Utils\ArrayUtils;
 
@@ -17,22 +17,22 @@ abstract class AbstractProcessor implements ProcessorInterface
     /**
      * Test if the processor supports the input.
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
      * @return boolean
      */
-    abstract public function supports(File $file, ManagedFile $parent): bool;
+    abstract public function supports(VirtualFile $file, ManagedFile $parent): bool;
 
     /**
      * Do the processing
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
-     * @return File
+     * @return VirtualFile
      */
-    abstract public function process(File $file, ManagedFile $parent): File;
+    abstract public function process(VirtualFile $file, ManagedFile $parent): VirtualFile;
 
     /**
      * Get the id of the service in the container

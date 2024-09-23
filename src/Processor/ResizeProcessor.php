@@ -1,7 +1,7 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Processor;
 
-use Webeak\Bundle\FileBundle\File;
+use Webeak\Bundle\FileBundle\VirtualFile;
 use Webeak\Bundle\FileBundle\ManagedFile;
 use Gregwar\ImageBundle\ImageHandler;
 use Gregwar\ImageBundle\Services\ImageHandling;
@@ -14,18 +14,18 @@ class ResizeProcessor extends AbstractProcessor
     /**
      * Target width to resize to.
      */
-    public int $width;
+    public int $width = 0;
 
     /**
      * Target height to resize to.
      */
-    public int $height;
+    public int $height = 0;
 
     /**
      * Background color if the image is too small
      * to fit the entire area after resize.
      */
-    public string $background;
+    public string $background = '';
 
     /**
      * Mode of resizing.
@@ -33,7 +33,7 @@ class ResizeProcessor extends AbstractProcessor
      *
      * @see https://github.com/Gregwar/Image#basic-handling
      */
-    public string $mode;
+    public string $mode = 'default';
 
     public function __construct(private readonly ImageHandling $handler)
     {
@@ -44,12 +44,12 @@ class ResizeProcessor extends AbstractProcessor
     /**
      * Test if the processor supports the input.
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
      * @return boolean
      */
-    public function supports(File $file, ManagedFile $parent): bool
+    public function supports(VirtualFile $file, ManagedFile $parent): bool
     {
         return substr((string)$file->getMimeType(), 0, 6) === 'image/';
     }
@@ -57,40 +57,33 @@ class ResizeProcessor extends AbstractProcessor
     /**
      * Do the processing.
      *
-     * @param File        $file   file to do the processing for
+     * @param VirtualFile        $file   file to do the processing for
      * @param ManagedFile $parent object containing the file
      *
-     * @return File
+     * @return VirtualFile
      */
-    public function process(File $file, ManagedFile $parent): File
+    public function process(VirtualFile $file, ManagedFile $parent): VirtualFile
     {
-        $imageHandler = $this->handler->open($file->getRealPath());
+        $content = $file->getContent();
+        $tempPath = tempnam(sys_get_temp_dir(), 'image');
+        file_put_contents($tempPath, $content);
+        $imageHandler = $this->handler->open($tempPath);
 
         if (!$this->needsResizing($imageHandler)) {
+            unlink($tempPath);
             return $file;
         }
         switch ($this->mode) {
-            case 'scale': {
-                $imageHandler->scaleResize($this->width, $this->height, $this->background);
-            } break ;
-
-            case 'stretch': {
-                $imageHandler->forceResize($this->width, $this->height, $this->background);
-            } break ;
-
-            case 'crop': {
-                $imageHandler->cropResize($this->width, $this->height, $this->background);
-            } break ;
-
-            case 'zoomCrop': {
-                $imageHandler->zoomCrop($this->width, $this->height, $this->background, 'center', 'center');
-            } break ;
-
-            default: {
-                $imageHandler->resize($this->width, $this->height, $this->background);
-            }
+            case 'scale': $imageHandler->scaleResize($this->width, $this->height, $this->background); break;
+            case 'stretch': $imageHandler->forceResize($this->width, $this->height, $this->background); break;
+            case 'crop': $imageHandler->cropResize($this->width, $this->height, $this->background); break;
+            case 'zoomCrop': $imageHandler->zoomCrop($this->width, $this->height, $this->background, 'center', 'center'); break;
+            default: $imageHandler->resize($this->width, $this->height, $this->background);
         }
-        $imageHandler->save($file->getRealPath());
+        $imageHandler->save($tempPath);
+        $processedContent = file_get_contents($tempPath);
+        $file->setContent($processedContent);
+        unlink($tempPath);
         return $file;
     }
 

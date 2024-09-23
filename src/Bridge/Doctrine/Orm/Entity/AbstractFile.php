@@ -67,6 +67,13 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
     #[ORM\Column(type: "string", length: 32, nullable: false)]
     protected string $hash;
 
+    /**
+     * Holds the type of file system used to store the file.
+     * If null, it is assumed that the default file system of the configuration has been used.
+     */
+    #[ORM\Column(type: "string", length: 45, nullable: true)]
+    protected ?string $fileSystemType;
+
     public function __construct()
     {
         parent::__construct();
@@ -79,6 +86,7 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
         $this->usageCount = 0;
         $this->sourceFileHash = '';
         $this->hash = '';
+        $this->fileSystemType = null;
     }
 
     /**
@@ -284,5 +292,22 @@ abstract class AbstractFile extends AbstractEntity implements FileEntityInterfac
     public function getHash(): string
     {
         return $this->hash;
+    }
+
+    /**
+     * Sets the type of file system used to store the file.
+     */
+    public function setFileSystemType(?string $type): FileEntityInterface
+    {
+        $this->fileSystemType = $type;
+        return $this;
+    }
+
+    /**
+     * Gets the type of file system used to store the file.
+     */
+    public function getFileSystemType(): ?string
+    {
+        return $this->fileSystemType;
     }
 }

@@ -1,23 +1,18 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
-use Webeak\Bundle\FileBundle\Exception\UploadException;
-use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Webeak\Bundle\FileBundle\Exception\UploadException;
+use Webeak\Bundle\FileBundle\ManagedFile;
+use Webeak\Bundle\FileBundle\VirtualFile;
 
 /**
  * Handle UploadedFile object input.
  */
 class UploadedFileAdapter implements AdapterInterface
 {
-    public function __construct(private readonly FileSystemInterface $filesystem)
-    {
-
-    }
-
     /**
-     * Test if the adapter supports the input.
+     * @inheritDoc
      */
     public function supports(mixed $input): bool
     {
@@ -25,21 +20,20 @@ class UploadedFileAdapter implements AdapterInterface
     }
 
     /**
-     * Normalize the input value into a (symfony) File instance.
-     *
-     * @param UploadedFile $input the input to convert into a File instance
-     *
-     * @return File
+     * @inheritDoc
      *
      * @throws
      */
-    public function normalize($input): File
+    public function normalize($input, ManagedFile $managedFile): VirtualFile
     {
+        /** @var UploadedFile $input */
         if (!$input->isValid()) {
             throw new UploadException(sprintf('The upload failed. Reason: %s', $input->getErrorMessage()));
         }
-        $file = $this->filesystem->move($input->getRealPath(), $this->filesystem->generateTemporaryPath());
-        $file->setVirtualName($input->getClientOriginalName());
-        return $file;
+        $virtualFile = $managedFile->createVersion();
+        $virtualFile->setVirtualName($input->getClientOriginalName());
+        $virtualFile->setFileSystem($managedFile->getFileSystem());
+        $virtualFile->setContentStream(fopen($input->getRealPath(), 'r'));
+        return $virtualFile;
     }
 }

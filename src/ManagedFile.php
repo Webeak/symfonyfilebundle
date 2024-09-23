@@ -1,12 +1,14 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
-use Symfony\Component\HttpFoundation\RequestStack;
+use League\Flysystem\Filesystem;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
-use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
+use Webeak\Bundle\FileBundle\FileSystem\FileSystemCollection;
+use Webeak\Bundle\FileBundle\Storage\StorageInterface;
+use Webeak\Component\Utils\RandomGenerator;
 use Webeak\Component\Utils\UtilPhp;
 
 /**
@@ -14,13 +16,6 @@ use Webeak\Component\Utils\UtilPhp;
  */
 class ManagedFile
 {
-
-    /** @var FileSystemInterface */
-    protected FileSystemInterface $filesystem;
-
-    /** @var RouterInterface */
-    protected RouterInterface $router;
-
     /**
      * Unique identifier of the file and all its versions.
      * This is the identifier the app will always refer to.
@@ -30,7 +25,7 @@ class ManagedFile
     /**
      * Associative array of versionName => File instance.
      *
-     * @var File[]
+     * @var VirtualFile[]
      */
     protected array $versions;
 
@@ -48,41 +43,49 @@ class ManagedFile
     /** @var integer  */
     private int $usageCount;
 
-    /** @var string */
-    private string $publicRootDir;
-
-    /** @var string */
-    private string $httpRoot;
+    /** @var boolean */
+    private bool $disposed;
 
     /**
      * @throws
      */
-    public function __construct(RequestStack $requestStack,
-                                FileSystemInterface $filesystem,
-                                RouterInterface $router,
-                                string $projectRootDir)
+    public function __construct(private readonly RouterInterface       $router,
+                                private readonly FileSystemCollection  $fileSystems,
+                                private readonly FileIdentifierManager $fileIdentifierManager,
+                                private readonly string                $defaultFileSystemType,
+                                private readonly string                $defaultStorageType)
     {
-        $currentRequest = $requestStack->getCurrentRequest();
-        $this->filesystem = $filesystem;
-        $this->router = $router;
-        $this->publicRootDir = $projectRootDir . '/public';
-        $this->httpRoot = $currentRequest ? $currentRequest->getSchemeAndHttpHost() : '/';
-        $this->versions = [];
         $this->removedVersions = [];
+        $this->versions = [];
         $this->errors = [];
         $this->configuration = null;
         $this->usageCount = 0;
-        if (!$this->publicRootDir) {
-            throw new UsageException('Invalid web root dir.');
+    }
+
+    public function dispose(): void
+    {
+        $this->disposed = true;
+        $this->fileIdentifierManager->remove($this->getIdentifier());
+        foreach ($this->versions as $version) {
+            $version->dispose();
         }
+    }
+
+    public function isDisposed(): bool
+    {
+        return $this->disposed;
     }
 
     /**
      * Add a new version of this file.
      */
-    public function addVersion(File $version, string $name = 'default', bool $override = true): static
+    public function addVersion(VirtualFile $version, string $name = 'default', bool $override = true): static
     {
-        if (!array_key_exists($name, $this->versions) || $override) {
+        $existingVersion = $this->hasVersion($name);
+        if (!$existingVersion || $override) {
+            if ($existingVersion) {
+                $this->removeVersion($name);
+            }
             $version->setVersionName($name);
             $this->versions[$name] = $version;
         }
@@ -102,7 +105,7 @@ class ManagedFile
      *
      * @throws
      */
-    public function getVersion(string $name): File
+    public function getVersion(string $name): VirtualFile
     {
         if (array_key_exists($name, $this->versions)) {
             return $this->versions[$name];
@@ -118,14 +121,14 @@ class ManagedFile
      */
     public function removeVersion(string $name): void
     {
-        if (array_key_exists($name, $this->versions) && !in_array($name, $this->removedVersions)) {
-            $this->removedVersions[$name] = $this->versions[$name];
-            unset($this->versions[$name]);
-        }
+        $this->removedVersions[] = $this->versions[$name];
+        unset($this->versions[$name]);
     }
 
     /**
-     * Get the array of File waiting to be removed.
+     * Get the array of VirtualFile waiting to be removed.
+     *
+     * @return VirtualFile[]
      */
     public function getRemovedVersions(): array
     {
@@ -223,8 +226,11 @@ class ManagedFile
     /**
      * Set a version file.
      */
-    public function setVersion(string $name, File $version): static
+    public function setVersion(string $name, VirtualFile $version): static
     {
+        if (array_key_exists($name, $this->versions)) {
+            $this->removeVersion($name);
+        }
         $this->versions[$name] = $version;
         return $this;
     }
@@ -239,7 +245,8 @@ class ManagedFile
         if (!$version) {
             $version = $this->getDefaultVersionName();
         }
-        return $this->filesystem->read($this->getVersion($version));
+        $virtualFile = $this->getVersion($version);
+        return $virtualFile->getContent();
     }
 
     /**
@@ -252,7 +259,82 @@ class ManagedFile
         if (!$version) {
             $version = $this->getDefaultVersionName();
         }
-        $this->filesystem->write($this->getVersion($version), $content);
+        $virtualFile = $this->getVersion($version);
+        $virtualFile->setContent($content);
+    }
+
+    /**
+     * Get the filesystem responsible for storing the file's content.
+     */
+    public function getFileSystem(): Filesystem
+    {
+        return $this->fileSystems->offsetGet($this->getFileSystemType());
+    }
+
+    /**
+     * Get the name of type of filesystem responsible for storing the file's content.
+     */
+    public function getFileSystemType(): string
+    {
+        $specificFileSystem = $this->configuration->getFileSystemType();
+        if ($specificFileSystem) {
+            return $specificFileSystem;
+        }
+        return $this->defaultFileSystemType;
+    }
+
+    /**
+     * Get the filesystem responsible for storing the file's content.
+     */
+    public function getStorage(): StorageInterface
+    {
+        return $this->storages->offsetGet($this->getStorageType());
+    }
+
+    /**
+     * Get the name of type of filesystem responsible for storing the file's content.
+     */
+    public function getStorageType(): string
+    {
+        $specificStorageType = $this->configuration->getStorageType();
+        if ($specificStorageType) {
+            return $specificStorageType;
+        }
+        return $this->defaultStorageType;
+    }
+
+    /**
+     * Set the name of type of filesystem responsible for storing the file's content.
+     */
+    public function setStorageType(string $storageType): void
+    {
+        if (!$this->storages->offsetExists($storageType)) {
+            throw new UsageException(sprintf(
+                'The specified storage "%s" is missing.',
+                $storageType
+            ));
+        }
+        $this->configuration->setStorageType($storageType);
+    }
+
+    /**
+     * Set the name of the filesystem responsible for storing the file's content.
+     *
+     * @throws
+     */
+    public function setFileSystemType(string $fileSystemType): void
+    {
+        if (!$this->fileSystems->offsetExists($fileSystemType)) {
+            throw new UsageException(sprintf(
+                'The specified filesystem "%s" is missing.',
+                $fileSystemType
+            ));
+        }
+        $fileSystem = $this->fileSystems->offsetGet($fileSystemType);
+        $this->configuration->setFileSystemType($fileSystemType);
+        foreach ($this->versions as $version) {
+            $version->setFileSystem($fileSystem);
+        }
     }
 
     /**
@@ -264,30 +346,8 @@ class ManagedFile
     }
 
     /**
-     * Get the absolute path to the file in the filesystem.
-     * You should avoid using this and let the file manager handle the file.
-     *
-     * NEVER use this to remove a file, as it will still exist in the file manager database.
-     *
-     * @throws
-     */
-    public function getLocalPath(?string $version = null): string
-    {
-        if (!$version) {
-            $version = $this->getDefaultVersionName();
-        }
-        return $this->getVersion($version)->getRealPath();
-    }
-
-    /**
-     * Get the HTTP path to the file.
-     * It can vary depending on the access rights associated with the file.
-     *
-     * If the file is publicly available (has no access rights), the HTTP link will be
-     * a direct link to the file in the "web/" folder.
-     *
-     * If access rights have been added to the file, then the HTTP path will lead to
-     * a proxy action where the user asking to view the file will be checked.
+     * Get the HTTP path to a version of the file.
+     * If no version is given, the default version is used.
      *
      * @throws
      */
@@ -296,12 +356,8 @@ class ManagedFile
         if (!$version) {
             $version = $this->getDefaultVersionName();
         }
-        $file = $this->getVersion($version);
-        if ($file->isPublic()) {
-            $relativePath = str_replace('\\', '/', str_replace($this->publicRootDir, '', $file->getRealPath()));
-            return rtrim($this->httpRoot, '/').'/'.trim($relativePath, '/');
-        }
-        $realFileName = $file->getVirtualName();
+        $versionFile = $this->getVersion($version);
+        $realFileName = $versionFile->getVirtualName();
         $realFileExtension = '';
         if (($pos = strrpos($realFileName, '.')) !== false) {
             $realFileExtension = substr($realFileName, $pos);
@@ -310,7 +366,7 @@ class ManagedFile
         return $this->router->generate('wb_file_proxy', [
             'identifier' => $this->identifier,
             'version' => $version,
-            'type' => $file->isImage() ? 'i' : 'g',
+            'type' => $versionFile->isImage() ? 'i' : 'g',
             'slug' => UtilPhp::slugify($realFileName) . $realFileExtension
         ]);
     }
@@ -369,7 +425,7 @@ class ManagedFile
             return false;
         }
         foreach ($this->versions as $name => $version) {
-            if (!$version->isFile() || !$version->isReadable()) {
+            if (!$version->isReadable()) {
                 return false;
             }
         }
@@ -513,6 +569,31 @@ class ManagedFile
     }
 
     /**
+     * Create a new version of the file.
+     * This method guarantees that the identifier of the created file is unique.
+     *
+     * @throws
+     */
+    public function createVersion(): VirtualFile
+    {
+        $virtualFile = new VirtualFile();
+        $usedIdentifiers = [];
+        foreach ($this->versions as $version) {
+            $usedIdentifiers[] = $version->getIdentifier();
+        }
+        $tries = 0;
+        do {
+            $generated = $this->identifier . '_' . RandomGenerator::randomString(10);
+            if (!in_array($generated, $usedIdentifiers)) {
+                $virtualFile->setIdentifier($generated);
+                return $virtualFile;
+            }
+        } while (++$tries < 10);
+
+        throw new UsageException('Failed to generate a new unique identifier.');
+    }
+
+    /**
      * Get a PublicFile instance for the file.
      *
      * @throws
@@ -537,28 +618,6 @@ class ManagedFile
             $publicFile->versions[$name] = $publicVersion;
         }
         return $publicFile;
-    }
-
-    /**
-     * \Symfony\Component\HttpFoundation\File\File proxies.
-     */
-
-    /**
-     * Returns the extension based on the mime type.
-     *
-     * If the mime type is unknown, returns null.
-     *
-     * This method uses the mime type as guessed by getMimeType()
-     * to guess the file extension.
-     *
-     * @throws
-     */
-    public function guessExtension(?string $version = null): ?string
-    {
-        if (!$version) {
-            $version = $this->getDefaultVersionName();
-        }
-        return $this->getVersion($version)->guessExtension();
     }
 
     /**
@@ -588,7 +647,7 @@ class ManagedFile
         sort($keys);
         for ($i = 0, $ii = count($keys); $i < $ii; ++$i) {
             $version = $this->versions[$keys[$i]];
-            if ($version instanceof File) {
+            if ($version instanceof VirtualFile) {
                 $hashes .= $version->getHash();
             } else {
                 $hashes .= md5(((string)microtime()).rand(0, 10000));
@@ -611,10 +670,6 @@ class ManagedFile
         $exported['expirationDate'] = null;
         return md5($this->getSourceFilesHash().'#'.serialize($exported));
     }
-
-    /**
-     * \SplFileInfo proxies.
-     */
 
     /**
      * Gets the filename
@@ -673,63 +728,6 @@ class ManagedFile
             $version = $this->getDefaultVersionName();
         }
         return $this->getVersion($version)->getSize();
-    }
-
-    /**
-     * Gets last access time of the file
-     *
-     * @return int the time the file was last accessed.
-     *
-     * @throws
-     *
-     * @since 5.1.2
-     *
-     * @link http://php.net/manual/en/splfileinfo.getatime.php
-     */
-    public function getATime(?string $version = null): int
-    {
-        if (!$version) {
-            $version = $this->getDefaultVersionName();
-        }
-        return $this->getVersion($version)->getATime();
-    }
-
-    /**
-     * Gets the last modified time
-     *
-     * @return int the last modified time for the file, in a Unix timestamp.
-     *
-     * @throws
-     *
-     * @since 5.1.2
-     *
-     * @link http://php.net/manual/en/splfileinfo.getmtime.php
-     */
-    public function getMTime(?string $version = null): int
-    {
-        if (!$version) {
-            $version = $this->getDefaultVersionName();
-        }
-        return $this->getVersion($version)->getMTime();
-    }
-
-    /**
-     * Gets the inode change time
-     *
-     * @return int The last change time, in a Unix timestamp.
-     *
-     * @throws
-     *
-     * @since 5.1.2
-     *
-     * @link http://php.net/manual/en/splfileinfo.getctime.php
-     */
-    public function getCTime(string $version = null): int
-    {
-        if (!$version) {
-            $version = $this->getDefaultVersionName();
-        }
-        return $this->getVersion($version)->getCTime();
     }
 
     /**

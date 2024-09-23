@@ -4,11 +4,11 @@ namespace Webeak\Bundle\FileBundle\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 
 class ClearTempFilesCommand extends Command
 {
-    public function __construct(private readonly FileSystemInterface $fileSystem, string $name = null)
+    public function __construct(string $name = null)
     {
         parent::__construct($name);
     }
@@ -21,6 +21,7 @@ class ClearTempFilesCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): void
     {
-        $this->fileSystem->clearOldTemporaryFiles($output);
+        throw new UsageException('Not implemented yet');
+        // $this->fileSystem->clearOldTemporaryFiles($output);
     }
 }

@@ -1,58 +1,54 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Adapter;
 
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
-use Webeak\Bundle\FileBundle\File;
-use Webeak\Bundle\FileBundle\FileSystem\FileSystemInterface;
+use Webeak\Bundle\FileBundle\ManagedFile;
+use Webeak\Bundle\FileBundle\VirtualFile;
 
 /**
  * Handle http url input.
  */
 class HttpPathAdapter implements AdapterInterface
 {
-    public function __construct(private readonly FileSystemInterface $fileSystem)
+    public function __construct(private readonly HttpClientInterface $httpClient)
     {
 
     }
 
     /**
-     * Test if the adapter supports the input.
+     * @inheritDoc
      */
     public function supports(mixed $input): bool
     {
-        return is_string($input) && !!preg_match('#^https?:\/\/#', $input);
+        return is_string($input) && preg_match('#^https?:\/\/#', $input);
     }
 
     /**
-     * Normalize the input value into a (symfony) File instance.
+     * @inheritDoc
      *
-     * @throws
+     * @throws IOException
      */
-    public function normalize(mixed $input): File
+    public function normalize(mixed $input, ManagedFile $managedFile): VirtualFile
     {
-        $tempPath = $this->fileSystem->generateTemporaryPath();
-        if (!is_resource(($fp = @fopen($tempPath, 'w+')))) {
-            throw new IOException(sprintf('Failed to open temporary path at "%s".', $tempPath), 0, 500, null, ['path' => $tempPath]);
-        }
-        if (($ch = curl_init(str_replace(" ", "%20", $input))) === false) {
-            throw new IOException('curl_init() failed.', 0, 500, null, ['input' => $input, 'curl_error_code' => curl_errno($ch)]);
-        }
         try {
-            curl_setopt($ch, CURLOPT_TIMEOUT, 50);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_FILE, $fp);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            if (curl_exec($ch) !== false) {
-                throw new IOException('curl request failed', 0, 500, null, ['input' => $input, 'curl_error_code' => curl_errno($ch)]);
+            $response = $this->httpClient->request('GET', $input, [
+                'timeout' => 50,
+                'verify_peer' => false,
+                'verify_host' => false,
+                'max_redirects' => 10,
+            ]);
+            if ($response->getStatusCode() !== 200) {
+                throw new IOException(sprintf('Failed to download file from "%s". Status code: %d', $input, $response->getStatusCode()));
             }
-            $file = new File($tempPath);
-            $file->setVirtualName(substr($input, intval(strrpos($input, '/')) + 1));
-            return $file;
-        } finally {
-            curl_close($ch);
-            fclose($fp);
+            $virtualFile = $managedFile->createVersion();
+            $virtualFile->setVirtualName(basename($input));
+            $virtualFile->setFileSystem($managedFile->getFileSystem());
+            $virtualFile->setContent($response->getContent());
+            return $virtualFile;
+
+        } catch (\Exception $e) {
+            throw new IOException(sprintf('An error occurred while downloading the file: %s', $e->getMessage()), 0, 500, $e);
         }
     }
 }

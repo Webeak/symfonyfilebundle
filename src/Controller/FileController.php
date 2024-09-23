@@ -19,7 +19,11 @@ class FileController extends Controller
     {
         $offset = intval($request->query->get('offset', 0));
         $maxResults = max(1, intval($request->query->get('maxResults', 20)));
-        $results = $fileManager->find($offset, $request->query->all(), $maxResults);
+        $storageType = $request->query->get('storageType');
+        if (!$storageType) {
+            $this->stopForBadInput();
+        }
+        $results = $fileManager->find($storageType, $offset, $request->query->all(), $maxResults);
         return new XssiSafeJsonResponse($results);
     }
 

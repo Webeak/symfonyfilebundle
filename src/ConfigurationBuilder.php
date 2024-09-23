@@ -273,6 +273,30 @@ class ConfigurationBuilder
     }
 
     /**
+     * Get/set the file system type.
+     */
+    public function fileSystemType(?string $fileSystemType = null): string|null|static
+    {
+        if ($fileSystemType !== null) {
+            $this->configuration->setFileSystemType($fileSystemType);
+            return $this;
+        }
+        return $this->configuration->getFileSystemType();
+    }
+
+    /**
+     * Get/set the type of storage to use to store file's metadata.
+     */
+    public function storageType(?string $storageType = null): string|null|static
+    {
+        if ($storageType !== null) {
+            $this->configuration->setStorageType($storageType);
+            return $this;
+        }
+        return $this->configuration->getStorageType();
+    }
+
+    /**
      * Get the Configuration object behind the builder.
      */
     public function getConfiguration(): Configuration
@@ -328,6 +352,8 @@ class ConfigurationBuilder
         $this->autoConfirm(ArrayUtils::getValue($preset, 'autoConfirm', $this->autoConfirm()));
         $this->extra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'extra')));
         $this->publicExtra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'publicExtra')));
+        $this->fileSystemType(ArrayUtils::getValue($preset, 'filesystem'));
+        $this->storageType(ArrayUtils::getValue($preset, 'storageType'));
         return $this;
     }
 

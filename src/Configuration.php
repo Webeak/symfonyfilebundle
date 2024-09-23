@@ -79,6 +79,12 @@ class Configuration
     /** @var array */
     protected $publicExtra;
 
+    /** @var string|null */
+    protected $storageType;
+
+    /** @var string|null */
+    protected $fileSystemType;
+
     public function __construct()
     {
         $this->constraints = [];
@@ -90,6 +96,8 @@ class Configuration
         $this->public = false;
         $this->autoConfirm = false;
         $this->expirationDate = null;
+        $this->storageType = null;
+        $this->fileSystemType = null;
         $this->extra = [];
         $this->publicExtra = [];
     }
@@ -467,6 +475,53 @@ class Configuration
     }
 
     /**
+     * Set the file system type.
+     *
+     * @param string $fileSystemType
+     *
+     * @return Configuration
+     */
+    public function setFileSystemType($fileSystemType)
+    {
+        $this->fileSystemType = $fileSystemType;
+        return $this;
+    }
+
+    /**
+     * Get the file system type.
+     *
+     * @return string|null
+     */
+    public function getFileSystemType()
+    {
+        return $this->fileSystemType;
+    }
+
+    /**
+     * Set the type of storage to use to store file's metadata.
+     *
+     * @param string $storageType
+     *
+     * @return Configuration
+     */
+
+    public function setStorageType($storageType)
+    {
+        $this->storageType = $storageType;
+        return $this;
+    }
+
+    /**
+     * Get the type of storage to use to store file's metadata.
+     *
+     * @return string|null
+     */
+    public function getStorageType()
+    {
+        return $this->storageType;
+    }
+
+    /**
      * Return a PHP array holding the whole configuration.
      * You can restore the Configuration instance by using either:
      *
@@ -511,7 +566,9 @@ class Configuration
             'autoConfirm' => $this->autoConfirm,
             'expirationDate' => $this->expirationDate instanceof \DateTime ? $this->expirationDate->format('Y-m-d H:i:s') : null,
             'extra' => $this->extra,
-            'publicExtra' => $this->publicExtra
+            'publicExtra' => $this->publicExtra,
+            'storageType' => $this->storageType,
+            'fileSystemType' => $this->fileSystemType
         ];
     }
 
@@ -542,7 +599,7 @@ class Configuration
         if (array_key_exists('expirationDate', $configuration) && $configuration['expirationDate'] !== null) {
             $this->expirationDate = \DateTime::createFromFormat('Y-m-d H:i:s', $configuration['expirationDate']);
         }
-        $fields = ['usersWhiteListCumulative', 'usersWhiteListExclusive', 'usersBlackList', 'requiredRoles', 'public', 'extra', 'publicExtra'];
+        $fields = ['usersWhiteListCumulative', 'usersWhiteListExclusive', 'usersBlackList', 'requiredRoles', 'public', 'extra', 'publicExtra', 'fileSystemType', 'storageType'];
         for ($i = 0, $ii = count($fields); $i < $ii; ++$i) {
             $field = $fields[$i];
             if (array_key_exists($field, $configuration)) {
