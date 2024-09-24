@@ -149,7 +149,15 @@ class VirtualFile extends File
     public function setContentStream($stream): static
     {
         $this->ensurePathSystemReady();
-        $this->fileSystem->writeStream($this->path, $stream);
+
+        // Streaming is unsupported without copying to the memory
+        // because we need to write both to the filesystem, and to the temp file.
+        // Because the stream is not guaranteed to be rewindable (like a http stream),
+        // we cannot count on that either.
+        // So the easiest way is to copy the stream to a memory buffer, then to write it to the filesystem
+        // using the setContent() method.
+        $streamContent = stream_get_contents($stream);
+        $this->setContent($streamContent);
         return $this;
     }
 
