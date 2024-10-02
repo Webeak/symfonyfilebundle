@@ -15,7 +15,7 @@ interface StorageInterface
      *
      * @param OutputInterface $output
      */
-    public function clearExpiredFiles(OutputInterface $output = null);
+    public function clearExpiredFiles(OutputInterface $output = null): bool;
 
     /**
      * Load a file from the storage

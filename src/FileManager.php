@@ -268,11 +268,15 @@ class FileManager
     /**
      * Clear files for which the expiration date has been reached.
      */
-    public function clearExpiredFiles(?OutputInterface $output = null): void
+    public function clearExpiredFiles(?OutputInterface $output = null): bool
     {
+        $failureCount = 0;
         foreach ($this->storages as $storage) {
-            $storage->clearExpiredFiles($output);
+            if (!$storage->clearExpiredFiles($output)) {
+                ++$failureCount;
+            }
         }
+        return $failureCount === 0;
     }
 
     /**

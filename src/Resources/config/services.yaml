@@ -56,8 +56,8 @@ services:
         public: true
         shared: false
         arguments:
-            - '@doctrine'
             - '@Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface'
+            - '@Webeak\Bundle\FileBundle\Storage\StorageCollection'
 
     #
     # Adapters

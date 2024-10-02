@@ -3,7 +3,6 @@ namespace Webeak\Bundle\FileBundle\Storage;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\Persistence\ManagerRegistry;
-use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Webeak\Bundle\EssentialBundle\Exception\IOException;
@@ -23,9 +22,6 @@ use Webeak\Component\Utils\VarNormalizer;
  */
 class DoctrineStorage implements StorageInterface
 {
-    /** @var EntityManager */
-    private ObjectManager $entityManager;
-
     /** @var FileEntityInterface[] */
     private array $knownEntities;
 
@@ -46,11 +42,15 @@ class DoctrineStorage implements StorageInterface
                                 private readonly array               $configuration)
     {
         $this->knownEntities = [];
-        $this->entityManager = $this->doctrine->getManager($this->configuration['entity_manager']);
         $this->knownManagedFiles = [$this->configuration['entity_id_attr'] => [], 'hash' => []];
         $this->waitingForRemove = [];
         $this->waitingForFlush = [];
         $this->changed = false;
+    }
+
+    public function getConnection(): object
+    {
+        return $this->doctrine->getConnection($this->configuration['entity_manager']);
     }
 
     /**
@@ -189,17 +189,18 @@ class DoctrineStorage implements StorageInterface
         $waitingForRemove = array_values($this->waitingForRemove);
         $this->waitingForFlush = [];
         $this->waitingForRemove = [];
+        $em = $this->doctrine->getManager($this->configuration['entity_manager']);
         if (count($waitingForFlush) > 0 || count($waitingForRemove) > 0) {
-            if ($this->entityManager->isOpen()) {
+            if ($em->isOpen()) {
                 foreach ($waitingForFlush as $entity) {
                     if (!in_array($entity, $waitingForRemove, true)) {
-                        $this->entityManager->persist($entity);
+                        $em->persist($entity);
                     }
                 }
                 foreach ($waitingForRemove as $entity) {
-                    $this->entityManager->remove($entity);
+                    $em->remove($entity);
                 }
-                $this->entityManager->flush($waitingForFlush);
+                $em->flush();
             } else {
                 throw new IOException('Cannot flush changes on files because the entity manager is closed.');
             }
@@ -210,12 +211,13 @@ class DoctrineStorage implements StorageInterface
     /**
      * {@inheritdoc}
      */
-    public function clearExpiredFiles(OutputInterface $output = null): void
+    public function clearExpiredFiles(OutputInterface $output = null): bool
     {
-        $output?->writeln('Searching expired files..');
+        $output?->writeln(sprintf('Searching expired files for manager "%s"..', $this->configuration['entity_manager']));
 
         /** @var EntityManager $em */
-        $repository = $this->entityManager->getRepository($this->configuration['entity_class']);
+        $em = $this->doctrine->getManager($this->configuration['entity_manager']);
+        $repository = $em->getRepository($this->configuration['entity_class']);
         $builder = $repository->createQueryBuilder('e');
         $builder->where('e.expirationDate is not null');
         $builder->andWhere('e.expirationDate <= :date');
@@ -224,21 +226,23 @@ class DoctrineStorage implements StorageInterface
             $files = $builder->getQuery()->getResult();
             $output?->writeln('<info>' . count($files) . '</info> file(s) found.');
             for ($i = 0, $ii = count($files); $i < $ii; ++$i) {
-                /** @var ManagedFile $file */
-                $file = $files[$i];
-                $output?->write('Removing <info>' . $file->getFilename() . ' (' . $file->getIdentifier() . ')' . '</info>..');
+                $fileEntity = $files[$i];
+                $managedFile = $this->createFileFromEntity($fileEntity);
+                $output?->write('Removing <info>' . $managedFile->getFilename() . ' (' . $managedFile->getIdentifier() . ')' . '</info>..');
                 try {
-                    $file->dispose();
+                    $managedFile->dispose();
                     $output?->writeln('<info>success</info>.');
                 } catch (\Throwable $e) {
-                    $output?->writeln('<error>failed</error>.');
+                    $output?->writeln('<error>failed: ' . $e->getMessage() .'</error>.');
                 }
-                $this->entityManager->remove($file);
+                $em->remove($fileEntity);
             }
-            $this->entityManager->flush();
+            $em->flush();
         } catch (\Exception $e) {
             $output?->writeln('<error>' . $e->getMessage() . '</error>');
+            return false;
         }
+        return true;
     }
 
     /**
@@ -345,7 +349,7 @@ class DoctrineStorage implements StorageInterface
         if (array_key_exists($search, $this->knownManagedFiles[$type])) {
             return $this->knownManagedFiles[$type][$search];
         };
-        $entity = $this->entityManager->getRepository($this->configuration['entity_class'])->findOneBy($criteria);
+        $entity = $this->doctrine->getManager($this->configuration['entity_manager'])->getRepository($this->configuration['entity_class'])->findOneBy($criteria);
         if ($entity instanceof FileEntityInterface) {
             $managedFile = $this->createFileFromEntity($entity);
             if (!$managedFile->hasExpired()) {
@@ -353,7 +357,7 @@ class DoctrineStorage implements StorageInterface
             }
         }
         if ($throw) {
-            throw new IOException(sprintf(
+            throw new FileNotFoundException(sprintf(
                 'No file id "%s" has been found. It may have been removed.',
                 $search
             ));

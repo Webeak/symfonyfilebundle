@@ -1,9 +1,12 @@
 <?php
 namespace Webeak\Bundle\FileBundle;
 
-use Doctrine\Persistence\ManagerRegistry;
+use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\EssentialBundle\SharedStorage\LockInterface;
 use Webeak\Bundle\EssentialBundle\SharedStorage\SharedStorageInterface;
+use Webeak\Bundle\FileBundle\Exception\NoStorageFoundForIdentifierException;
+use Webeak\Bundle\FileBundle\Storage\DoctrineStorage;
+use Webeak\Bundle\FileBundle\Storage\StorageCollection;
 use Webeak\Component\Utils\RandomGenerator;
 
 /**
@@ -16,8 +19,8 @@ class FileIdentifierManager
     private const IDENTIFIER_BASE_LENGTH = 10;
     private const MAX_TRIES = 10;
 
-    public function __construct(private readonly ManagerRegistry $doctrine,
-                                private readonly SharedStorageInterface $sharedStorage)
+    public function __construct(private readonly SharedStorageInterface $sharedStorage,
+                                private readonly StorageCollection $storageCollection)
     {
 
     }
@@ -29,9 +32,12 @@ class FileIdentifierManager
      */
     public function create(string $storageType): string
     {
+        if (!$this->storageCollection->offsetExists($storageType)) {
+            throw new UsageException(sprintf('Unknown storage type %s', $storageType));
+        }
         $nbTries = 0;
         $currentLength = self::IDENTIFIER_BASE_LENGTH;
-        $connection = $this->doctrine->getConnection();
+        $connection = $this->getConnection($storageType);
 
         /** @var LockInterface $lock */
         $this->sharedStorage->getAndLock('file-identifier-factory', $lock, 'wb:file');
@@ -54,7 +60,7 @@ class FileIdentifierManager
                     continue;
                 }
                 $sql = 'INSERT INTO `' . self::TABLE_NAME . '` SET ref = ?, storage_type = ?';
-                $query = $this->doctrine->getConnection()->prepare($sql);
+                $query = $connection->prepare($sql);
                 $query->execute([$generated, $storageType]);
                 $storageKey = $this->getStorageKey($generated);
                 $this->sharedStorage->set($storageKey, $storageType);
@@ -67,14 +73,23 @@ class FileIdentifierManager
 
     public function remove(string $identifier): void
     {
-        $sql = 'DELETE FROM `' . self::TABLE_NAME . '` WHERE ref = ?';
-        $query = $this->doctrine->getConnection()->prepare($sql);
-        $query->execute([$identifier]);
+        foreach ($this->storageCollection as $storage) {
+            if (!($storage instanceof DoctrineStorage)) {
+                continue;
+            }
+            try {
+                $sql = 'DELETE FROM `' . self::TABLE_NAME . '` WHERE ref = ?';
+                $query = $storage->getConnection()->prepare($sql);
+                $query->execute([$identifier]);
+            } catch (\Throwable $e) {}
+        }
         $this->sharedStorage->unset($this->getStorageKey($identifier));
     }
 
     /**
      * Create a new unique identifier for a file.
+     *
+     * @throws
      */
     public function getStorageTypeForIdentifier(string $identifier): string
     {
@@ -83,19 +98,34 @@ class FileIdentifierManager
         if ($cachedValue !== null) {
             return $cachedValue;
         }
-        $sql = 'SELECT storage_type FROM `' . self::TABLE_NAME . '` WHERE ref = ?';
-        $query = $this->doctrine->getConnection()->prepare($sql);
-        $result = $query->execute([$identifier]);
-        $storageType = $result->fetchOne();
-        if ($storageType === false) {
-            throw new \RuntimeException('No storage type found for identifier ' . $identifier);
+        foreach ($this->storageCollection as $storage) {
+            if (!($storage instanceof DoctrineStorage)) {
+                continue;
+            }
+            $sql = 'SELECT storage_type FROM `' . self::TABLE_NAME . '` WHERE ref = ?';
+            $query = $storage->getConnection()->prepare($sql);
+            $result = $query->execute([$identifier]);
+            $storageType = $result->fetchOne();
+            if ($storageType === false) {
+                continue ;
+            }
+            $this->sharedStorage->set($storageKey, $storageType);
+            return $storageType;
         }
-        $this->sharedStorage->set($storageKey, $storageType);
-        return $storageType;
+        throw new NoStorageFoundForIdentifierException('No storage type found for identifier ' . $identifier);
     }
 
     private function getStorageKey(string $identifier): string
     {
         return sprintf(self::STORAGE_KEY, $identifier);
+    }
+
+    private function getConnection(string $storageType): object
+    {
+        $storage = $this->storageCollection->offsetGet($storageType);
+        if (!($storage instanceof DoctrineStorage)) {
+            throw new UsageException('Storage type ' . $storageType . ' is not supported by the identifier manager.');
+        }
+        return $storage->getConnection();
     }
 }

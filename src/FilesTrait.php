@@ -2,6 +2,7 @@
 namespace Webeak\Bundle\FileBundle;
 
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
+use Webeak\Bundle\FileBundle\Exception\NoStorageFoundForIdentifierException;
 use Webeak\Component\Utils\ArrayUtils;
 
 /**
@@ -56,7 +57,7 @@ trait FilesTrait
         if ($identifierToRemove !== null) {
             try {
                 $this->fileManager->remove($beforeIdentifier);
-            } catch (FileNotFoundException $e) {
+            } catch (FileNotFoundException | NoStorageFoundForIdentifierException $e) {
                 // File not found? It's ok we wanted to remove it anyway..
             }
         }
@@ -121,7 +122,7 @@ trait FilesTrait
         for ($i = 0, $ii = count($toRemove); $i < $ii; ++$i) {
             try {
                 $this->fileManager->remove($toRemove[$i]);
-            } catch (FileNotFoundException $e) {
+            } catch (FileNotFoundException | NoStorageFoundForIdentifierException $e) {
                 // File not found? It's ok we wanted to remove it anyway..
             }
         }

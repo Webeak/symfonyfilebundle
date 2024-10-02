@@ -353,7 +353,7 @@ class ConfigurationBuilder
         $this->extra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'extra')));
         $this->publicExtra(ArrayUtils::ensureArray(ArrayUtils::getValue($preset, 'publicExtra')));
         $this->fileSystemType(ArrayUtils::getValue($preset, 'filesystem'));
-        $this->storageType(ArrayUtils::getValue($preset, 'storageType'));
+        $this->storageType(ArrayUtils::getValue($preset, 'storage'));
         return $this;
     }
 

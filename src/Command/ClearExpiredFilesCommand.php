@@ -19,8 +19,11 @@ class ClearExpiredFilesCommand extends Command
              ->setDescription('Clears expired files');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): void
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->fileManager->clearExpiredFiles($output);
+        if ($this->fileManager->clearExpiredFiles($output)) {
+            return 0;
+        }
+        return 1;
     }
 }
