@@ -40,10 +40,13 @@ class FileManagerController extends Controller
                 ]);
             }
             if (count($output) === 1 && count($output[0]['errors']) > 0) {
-                throw new ClientException(implode(', ', $output[0]['errors']), 0, 400);
+                return new XssiSafeJsonResponse(['type' => 'ClientException', 'message' => implode(', ', $output[0]['errors'])], 400);
             }
         } else {
-            throw new ClientException('No file found in the request.', 0, 400);
+            return new XssiSafeJsonResponse(['type' => 'ClientException', 'message' => 'No file found in the request.'], 400);
+        }
+        if (count($files) === 1 && count($output) === 1) {
+            return new XssiSafeJsonResponse($output[0]);
         }
         return new XssiSafeJsonResponse($output);
     }
@@ -61,22 +64,48 @@ class FileManagerController extends Controller
             }
             $versionFile = $file->getVersion($version);
             $content = $versionFile->getContent();
-
-            $response = new Response();
+            $contentLength = strlen($content);
             $filename = $versionFile->getVirtualName();
             $mimeType = $file->getMimeType();
             $disposition = preg_match('/image|pdf/', $mimeType) ? 'inline' : 'attachment';
 
-            $response->headers->set('Cache-Control', 'private');
+            // Get the request headers to check for range requests
+            $request = $this->container->get('request_stack')->getCurrentRequest();
+            $rangeHeader = $request->headers->get('Range');
+
+            $response = new Response();
             $response->headers->set('Content-type', $mimeType);
-            $response->headers->set('Content-Disposition', $disposition.';');
-            $response->headers->set('Content-length',  strlen($content));
+            $response->headers->set('Content-Disposition', $disposition . '; filename="' . $filename . '"');
+            $response->headers->set('Accept-Ranges', 'bytes');
 
-            $response->sendHeaders();
-            $response->setContent($content);
+            if ($rangeHeader) {
+                // Parse the range header
+                if (preg_match('/bytes=(\d+)-(\d*)/', $rangeHeader, $matches)) {
+                    $start = intval($matches[1]);
+                    $end = isset($matches[2]) && $matches[2] !== '' ? intval($matches[2]) : $contentLength - 1;
 
+                    if ($start >= $contentLength || $end >= $contentLength) {
+                        // Invalid range request
+                        $response->setStatusCode(416); // Range Not Satisfiable
+                        $response->headers->set('Content-Range', 'bytes */' . $contentLength);
+                    } else {
+                        // Satisfy the range request
+                        $length = $end - $start + 1;
+                        $content = substr($content, $start, $length);
+
+                        $response->setStatusCode(206); // Partial Content
+                        $response->headers->set('Content-Range', "bytes $start-$end/$contentLength");
+                        $response->headers->set('Content-Length', $length);
+                        $response->setContent($content);
+                    }
+                }
+            } else {
+                // Regular response without range
+                $response->headers->set('Content-Length', $contentLength);
+                $response->setContent($content);
+            }
             return $response;
-        } catch (FileNotFoundException $e) {
+        }  catch (FileNotFoundException $e) {
             return $this->handleFetchErrorResponse(
                 $type,
                 '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',
