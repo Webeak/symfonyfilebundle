@@ -51,6 +51,7 @@ services:
             - '@Webeak\Bundle\FileBundle\FileIdentifierManager'
             - '%wb.file.default_filesystem%'
             - '%wb.file.default_storage%'
+            - '%wb.file.filesystems_public_paths%'
 
     Webeak\Bundle\FileBundle\FileIdentifierManager:
         public: true

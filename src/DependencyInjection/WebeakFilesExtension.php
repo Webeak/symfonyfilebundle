@@ -41,6 +41,7 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
 
         $aliases = $this->processConstraintsAliases($config);
         $presets = $this->processPresets($config, $aliases);
+        $filesystems = ArrayUtils::getValue($config, 'filesystems', []);
         $container->setParameter('wb.file.constraints_aliases', $aliases);
         $container->setParameter('wb.file.configuration_presets', $presets);
         $container->setParameter('wb.file.temp_files_lifetime', $config['temp_files_lifetime']);
@@ -49,8 +50,17 @@ class WebeakFilesExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('wb.file.default_storage', $config['default_storage']);
         $container->setParameter('wb.file.storages', ArrayUtils::getValue($config, 'storages', []));
         $container->setParameter('wb.file.default_filesystem', $config['default_filesystem']);
-        $container->setParameter('wb.file.filesystems', ArrayUtils::getValue($config, 'filesystems', []));
+        $container->setParameter('wb.file.filesystems', $filesystems);
 
+        $publicPathsMaps = [];
+        foreach ($filesystems as $name => $fs) {
+            $publicBaseUrl = ArrayUtils::getValue($fs, 'public_base_url');
+            if (is_string($publicBaseUrl)) {
+                $publicBaseUrl = $container->resolveEnvPlaceholders($publicBaseUrl, true);
+            }
+            $publicPathsMaps[$name] = $publicBaseUrl;
+        }
+        $container->setParameter('wb.file.filesystems_public_paths', $publicPathsMaps);
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yaml');
     }

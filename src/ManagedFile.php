@@ -7,7 +7,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Webeak\Bundle\EssentialBundle\Exception\UsageException;
 use Webeak\Bundle\FileBundle\Exception\FileNotFoundException;
 use Webeak\Bundle\FileBundle\FileSystem\FileSystemCollection;
-use Webeak\Bundle\FileBundle\Storage\StorageInterface;
+use Webeak\Component\Utils\ArrayUtils;
 use Webeak\Component\Utils\RandomGenerator;
 use Webeak\Component\Utils\UtilPhp;
 
@@ -53,7 +53,8 @@ class ManagedFile
                                 private readonly FileSystemCollection  $fileSystems,
                                 private readonly FileIdentifierManager $fileIdentifierManager,
                                 private readonly string                $defaultFileSystemType,
-                                private readonly string                $defaultStorageType)
+                                private readonly string                $defaultStorageType,
+                                private readonly array                 $fileSystemsPublicPaths)
     {
         $this->removedVersions = [];
         $this->versions = [];
@@ -284,14 +285,6 @@ class ManagedFile
     }
 
     /**
-     * Get the filesystem responsible for storing the file's content.
-     */
-    public function getStorage(): StorageInterface
-    {
-        return $this->storages->offsetGet($this->getStorageType());
-    }
-
-    /**
      * Get the name of type of filesystem responsible for storing the file's content.
      */
     public function getStorageType(): string
@@ -301,20 +294,6 @@ class ManagedFile
             return $specificStorageType;
         }
         return $this->defaultStorageType;
-    }
-
-    /**
-     * Set the name of type of filesystem responsible for storing the file's content.
-     */
-    public function setStorageType(string $storageType): void
-    {
-        if (!$this->storages->offsetExists($storageType)) {
-            throw new UsageException(sprintf(
-                'The specified storage "%s" is missing.',
-                $storageType
-            ));
-        }
-        $this->configuration->setStorageType($storageType);
     }
 
     /**
@@ -355,6 +334,11 @@ class ManagedFile
     {
         if (!$version) {
             $version = $this->getDefaultVersionName();
+        }
+        $filesystemType = $this->getConfiguration()->getFileSystemType();
+        $publicBaseUrl = ArrayUtils::getValue($this->fileSystemsPublicPaths, $filesystemType);
+        if ($publicBaseUrl) {
+            return trim($publicBaseUrl, '/') . $this->getVersion($version)->getPath();
         }
         $versionFile = $this->getVersion($version);
         $realFileName = $versionFile->getVirtualName();
