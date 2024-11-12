@@ -335,23 +335,24 @@ class ManagedFile
         if (!$version) {
             $version = $this->getDefaultVersionName();
         }
-        $filesystemType = $this->getConfiguration()->getFileSystemType();
-        $publicBaseUrl = ArrayUtils::getValue($this->fileSystemsPublicPaths, $filesystemType);
-        if ($publicBaseUrl) {
-            return trim($publicBaseUrl, '/') . $this->getVersion($version)->getPath();
-        }
         $versionFile = $this->getVersion($version);
         $realFileName = $versionFile->getVirtualName();
         $realFileExtension = '';
         if (($pos = strrpos($realFileName, '.')) !== false) {
-            $realFileExtension = substr($realFileName, $pos);
+            $realFileExtension = substr($realFileName, $pos + 1);
             $realFileName = substr($realFileName, 0, $pos);
+        }
+
+        $filesystemType = $this->getConfiguration()->getFileSystemType();
+        $publicBaseUrl = ArrayUtils::getValue($this->fileSystemsPublicPaths, $filesystemType);
+        if ($publicBaseUrl) {
+            return trim($publicBaseUrl, '/') . $this->getVersion($version)->getPath() .'.'.$realFileExtension.'?t='.$realFileExtension.'&n='.$realFileName.'.'.$realFileExtension;
         }
         return $this->router->generate('wb_file_proxy', [
             'identifier' => $this->identifier,
             'version' => $version,
             'type' => $versionFile->isImage() ? 'i' : 'g',
-            'slug' => UtilPhp::slugify($realFileName) . $realFileExtension
+            'slug' => UtilPhp::slugify($realFileName) . '.'.$realFileExtension
         ]);
     }
 
