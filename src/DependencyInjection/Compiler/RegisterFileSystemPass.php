@@ -9,6 +9,7 @@ use League\Flysystem\Ftp\FtpConnectionOptions;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use League\Flysystem\PhpseclibV3\SftpAdapter;
 use League\Flysystem\PhpseclibV3\SftpConnectionProvider;
+use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
@@ -92,10 +93,24 @@ class RegisterFileSystemPass implements CompilerPassInterface
                         ->addArgument(null)     // host fingerprint
                         ->addArgument(null);    // connectivity checker
 
+                    $visibility = $config['visibility'] ?? 'private';
+                    $permissions = $config['permissions'] ?? [
+                        'file' => ['public' => 0644, 'private' => 0600],
+                        'dir' => ['public' => 0755, 'private' => 0700],
+                    ];
+                    $visibilityConverterServiceId = sprintf('wb_file.sftp_visibility_converter.%s', $key);
+                    $container
+                        ->register($visibilityConverterServiceId, PortableVisibilityConverter::class)
+                        ->addArgument($permissions['file']['public'])
+                        ->addArgument($permissions['file']['private'])
+                        ->addArgument($permissions['dir']['public'])
+                        ->addArgument($permissions['dir']['private']);
+
                     $container
                         ->register($adapterServiceId, SftpAdapter::class)
                         ->addArgument(new Reference($sftpConnectionProviderServiceId))
-                        ->addArgument($config['save_path'] ?? '/');
+                        ->addArgument($config['save_path'] ?? '/')
+                        ->addArgument(new Reference($visibilityConverterServiceId));
                     break;
 
                 default:
