@@ -13,7 +13,7 @@ class FileIdentifier
     #[ORM\Column(type: "integer"), GeneratedValue(strategy: "AUTO")]
     protected ?int $id;
 
-    #[ORM\Column(name: "ref", type: "string", length: 45, options: ['collation' => 'utf8_bin'])]
+    #[ORM\Column(name: "ref", type: "string", length: 45, options: ['collation' => 'utf8mb4_bin'])]
     protected ?string $ref;
 
     #[ORM\Column(name: "storage_type", type: "string", length: 45)]
