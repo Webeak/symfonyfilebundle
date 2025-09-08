@@ -346,7 +346,7 @@ class ManagedFile
         $filesystemType = $this->getConfiguration()->getFileSystemType();
         $publicBaseUrl = ArrayUtils::getValue($this->fileSystemsPublicPaths, $filesystemType);
         if ($publicBaseUrl) {
-            return trim($publicBaseUrl, '/') . $this->getVersion($version)->getPath() .'.'.$realFileExtension.'?t='.$realFileExtension.'&n='.$realFileName.'.'.$realFileExtension;
+            return trim($publicBaseUrl, '/') . $this->getVersion($version)->getPath() .'?t='.$realFileExtension.'&n='.$realFileName.'.'.$realFileExtension;
         }
         return $this->router->generate('wb_file_proxy', [
             'identifier' => $this->identifier,

@@ -3,6 +3,7 @@ namespace Webeak\Bundle\FileBundle\DependencyInjection\Compiler;
 
 use Aws\S3\S3Client;
 use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
+use League\Flysystem\AzureBlobStorage\AzureBlobStorageAdapter;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Ftp\FtpAdapter;
 use League\Flysystem\Ftp\FtpConnectionOptions;
@@ -10,6 +11,7 @@ use League\Flysystem\Local\LocalFilesystemAdapter;
 use League\Flysystem\PhpseclibV3\SftpAdapter;
 use League\Flysystem\PhpseclibV3\SftpConnectionProvider;
 use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
+use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
@@ -111,6 +113,21 @@ class RegisterFileSystemPass implements CompilerPassInterface
                         ->addArgument(new Reference($sftpConnectionProviderServiceId))
                         ->addArgument($config['save_path'] ?? '/')
                         ->addArgument(new Reference($visibilityConverterServiceId));
+                    break;
+
+                case 'azure':
+                    $clientServiceId = sprintf('wb_file.azure_client.%s', $key);
+                    $container
+                        ->register($clientServiceId, BlobRestProxy::class)
+                        ->setFactory([BlobRestProxy::class, 'createBlobService'])
+                        ->addArgument($config['connection_string']);
+
+                    $container
+                        ->register($adapterServiceId, AzureBlobStorageAdapter::class)
+                        ->addArgument(new Reference($clientServiceId))
+                        ->addArgument($config['container'])
+                        ->addArgument($config['prefix'] ?? '');
+
                     break;
 
                 default:

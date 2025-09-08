@@ -21,6 +21,10 @@ class FileSystemConfigValidator
             'required' => ['host', 'save_path'],
             'forbidden' => ['region', 'bucket']
         ],
+        'azure' => [
+            'required' => ['connection_string', 'container'],
+            'forbidden' => []
+        ],
     ];
 
     /**
