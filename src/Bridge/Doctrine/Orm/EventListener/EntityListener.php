@@ -200,15 +200,19 @@ class EntityListener
                         ObjectUtils::writeProperty($entity, $data['fieldName'], PublicFileCollection::createFromArray($array));
                     }
                 } catch (\Exception | \Throwable $e) {
+                    //
                     // An exception here MUST NOT interrupt the process.
-                    // Simply log it and continue.
+                    //
+                    // DO NOT reassign null or an empty array here, like I did before.
+                    // Doing so will cause data loss if the file validation fails.
+                    // Maybe log the error at most, but DO NOT change the entity.
+                    //
                     StaticLogger::error($e->getMessage(), ['exception' => $e]);
-
-                    if ($value instanceof PublicFile) {
-                        ObjectUtils::writeProperty($entity, $data['fieldName'], null);
-                    } else {
-                        ObjectUtils::writeProperty($entity, $data['fieldName'], []);
-                    }
+//                    if ($value instanceof PublicFile) {
+//                        ObjectUtils::writeProperty($entity, $data['fieldName'], null);
+//                    } else {
+//                        ObjectUtils::writeProperty($entity, $data['fieldName'], []);
+//                    }
                 }
             }
         }

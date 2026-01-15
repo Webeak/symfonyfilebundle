@@ -1,28 +1,22 @@
 <?php
 namespace Webeak\Bundle\FileBundle\Bridge\Doctrine\Dbal\Type;
 
-use Webeak\Bundle\FileBundle\PublicFile;
-use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Types\Type;
+use Webeak\Bundle\FileBundle\PublicFile;
 
-/**
- * Doctrine type representing a PublicFile instance in the database.
- */
 class FileType extends Type
 {
     const TYPE_NAME = 'file';
 
-    /**
-     * {@inheritdoc}
-     */
     public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
-        return $platform->getBlobTypeDeclarationSQL($fieldDeclaration);
+        return $platform->getVarcharTypeDeclarationSQL([
+            'length' => 1024,
+            'nullable' => $fieldDeclaration['nullable'] ?? false,
+        ]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function convertToDatabaseValue($value, AbstractPlatform $platform)
     {
         if (!$value) {
@@ -34,9 +28,6 @@ class FileType extends Type
         return serialize($value);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function convertToPHPValue($value, AbstractPlatform $platform)
     {
         if (!$value) {
@@ -48,5 +39,10 @@ class FileType extends Type
     public function getName()
     {
         return self::TYPE_NAME;
+    }
+
+    public function requiresSQLCommentHint(AbstractPlatform $platform)
+    {
+        return true;
     }
 }
