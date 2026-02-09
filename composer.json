@@ -22,9 +22,9 @@
         "league/flysystem-azure-blob-storage": "^3.30",
         "league/flysystem-ftp": "^3.28",
         "league/flysystem-sftp-v3": "^3.0",
-        "symfony/framework-bundle": "6.3.*",
-        "symfony/mime": "6.3.*",
-        "symfony/validator": "6.3.*",
+        "symfony/framework-bundle": "^6.3",
+        "symfony/mime": "^6.3",
+        "symfony/validator": "^6.3",
         "webeak/essential-bundle": "^2.0",
         "webeak/doctrine-extensions-bundle": "^2.0",
         "webeak/utils": "^2.0"
