@@ -111,15 +111,34 @@ class S3Bucket
     private function getClient(): S3Client
     {
         if ($this->client === null) {
-            $this->client = new S3Client([
-                'version' => 'latest',
-                'region' => $this->configuration['region'],
-                'credentials' => [
-                    'key' => $this->configuration['credentials_key'],
-                    'secret' => $this->configuration['credentials_secret'],
-                ],
-            ]);
+            $this->client = new S3Client($this->getClientOptions());
         }
         return $this->client;
+    }
+
+    private function getClientOptions(): array
+    {
+        $options = [
+            'version' => 'latest',
+            'region' => $this->configuration['region'],
+        ];
+
+        $credentialsKey = trim((string) ($this->configuration['credentials_key'] ?? ''));
+        $credentialsSecret = trim((string) ($this->configuration['credentials_secret'] ?? ''));
+
+        if (($credentialsKey === '') !== ($credentialsSecret === '')) {
+            throw new \LogicException('AWS credentials key and secret must either both be provided or both omitted.');
+        }
+
+        // Omitting the credentials option lets the AWS SDK use its default
+        // credential provider chain (EC2/ECS role, web identity, profile...).
+        if ($credentialsKey !== '') {
+            $options['credentials'] = [
+                'key' => $credentialsKey,
+                'secret' => $credentialsSecret,
+            ];
+        }
+
+        return $options;
     }
 }

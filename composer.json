@@ -25,13 +25,20 @@
         "webeak/utils": "^1.0"
     },
     "suggest": {
+        "aws/aws-sdk-php": "To use the AWS S3 filesystem.",
         "doctrine/doctrine-bundle": "To use doctrine storage and/or profit of doctrine types.",
         "webeak/shared-storage-bundle": "To set expiration date to files when using the filesystem storage."
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.5||^8.5||^9.6"
     },
     "autoload": {
         "psr-4": { "Webeak\\Bundle\\FileBundle\\": "src/" },
         "exclude-from-classmap": [
             "/Tests/"
         ]
+    },
+    "autoload-dev": {
+        "psr-4": { "Webeak\\Bundle\\FileBundle\\Tests\\": "Tests/" }
     }
 }
