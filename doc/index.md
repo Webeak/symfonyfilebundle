@@ -11,6 +11,7 @@
 - [Presets](presets.md)
 - [Access rights](access-rights.md)
 - [Doctrine](doctrine.md)
+- [AWS S3 authentication](#aws-s3-authentication)
 
 ## Installation
 
@@ -66,6 +67,33 @@ The ideal is to create cron task to execute the commands automatically. Below a 
 */10 * * * * php /var/www/vhosts/project-name/httpdocs/bin/console wb:file:clear-expired
 ```
 
+## AWS S3 authentication
+
+Static IAM user credentials remain supported:
+
+```yaml
+wb_file:
+    aws_s3_storage:
+        region: eu-west-3
+        bucket: example-bucket
+        credentials:
+            key: '%env(AWS_S3_KEY)%'
+            secret: '%env(AWS_S3_SECRET)%'
+```
+
+The credentials section can be omitted to use the AWS SDK default credential
+provider chain. On EC2, the SDK then retrieves and refreshes the temporary
+credentials of the IAM role associated with the instance:
+
+```yaml
+wb_file:
+    aws_s3_storage:
+        region: eu-west-3
+        bucket: example-bucket
+```
+
+Providing only a key or only a secret is considered a configuration error.
+
 ## Server configuration
 
 To ensure the upload works properly even for large files, you can tweek the configurations as defined below.
@@ -92,4 +120,3 @@ post_max_size = 1G
 max_input_time = 86400
 memory_limit = 512M
 ```
-
